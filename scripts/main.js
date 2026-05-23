@@ -128,6 +128,38 @@ function initLauncher() {
       }
     }
 
+    // Set dynamic instructions list based on selected game mode
+    const instructionsList = document.getElementById('instructions-list');
+    if (instructionsList) {
+      if (selectedMode === 'creative') {
+        instructionsList.innerHTML = `
+          WASD / ZQSD - Move<br>
+          SPACE - Fly Up<br>
+          SHIFT / C / CTRL - Fly Down<br>
+          R - Reset Camera<br>
+          U - Toggle UI<br>
+          0 - Pickaxe<br>
+          1-8 - Select Block<br>
+          F1 - Save Game<br>
+          F2 - Load Game<br>
+          F10 - Debug Camera<br><br>
+        `;
+      } else {
+        instructionsList.innerHTML = `
+          WASD / ZQSD - Move<br>
+          SHIFT - Sprint<br>
+          SPACE - Jump<br>
+          R - Reset Camera<br>
+          U - Toggle UI<br>
+          0 - Pickaxe<br>
+          1-8 - Select Block<br>
+          F1 - Save Game<br>
+          F2 - Load Game<br>
+          F10 - Debug Camera<br><br>
+        `;
+      }
+    }
+
     // Network Mode Setup
     if (playMode === 'host') {
       // Auto-load host's previous world, generate fresh terrain only if no save file exists

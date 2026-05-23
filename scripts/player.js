@@ -181,7 +181,11 @@ export class Player {
       this.velocity.y = 0; // Standard creative behavior: hover still unless input is held
       if (this.keysPressed['Space']) {
         this.velocity.y = flySpeed;
-      } else if (this.keysPressed['ShiftLeft'] || this.keysPressed['ShiftRight']) {
+      } else if (
+        this.keysPressed['ShiftLeft'] || this.keysPressed['ShiftRight'] ||
+        this.keysPressed['ControlLeft'] || this.keysPressed['ControlRight'] ||
+        this.keysPressed['KeyC'] || this.keysPressed['c']
+      ) {
         this.velocity.y = -flySpeed;
       }
     }
