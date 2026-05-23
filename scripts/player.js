@@ -56,6 +56,11 @@ export class Player {
     // The tool is parented to the camera
     this.camera.add(this.tool.container);
 
+    // Add a subtle camera headlight so held tools and nearby blocks are illuminated perfectly
+    const headlight = new THREE.PointLight(0xfff8e7, 0.4, 4);
+    headlight.position.set(0, 0, 0);
+    this.camera.add(headlight);
+
     // Set raycaster to use layer 0 so it doesn't interact with water mesh on layer 1
     this.raycaster.layers.set(0);
     this.camera.layers.enable(1);
@@ -214,14 +219,69 @@ export class Player {
    */
   setTool(tool) {
     this.tool.container.clear();
+
+    // Auto-scale and auto-center the tool mesh if it's from the external GLB loader
+    const box = new THREE.Box3().setFromObject(tool);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+
+    console.log("[Player] Loaded tool bounding box size:", size, "center:", center);
+
+    if (tool.name !== "fallback_pickaxe") {
+      // Shift tool position so its horizontal center is at 0 and its bottom sits at 0 in pivot space
+      tool.position.set(-center.x, -box.min.y, -center.z);
+
+      // Auto-scale so maximum dimension is normalized to 0.45 units in camera space
+      const maxDim = Math.max(size.x, size.y, size.z);
+      if (maxDim > 0) {
+        const scaleFactor = 0.45 / maxDim;
+        tool.scale.set(scaleFactor, scaleFactor, scaleFactor);
+        console.log(`[Player] Auto-scaled GLB tool by factor of ${scaleFactor} (original max dimension was ${maxDim})`);
+      }
+    } else {
+      // Fallback pickaxe is already perfectly centered and scaled
+      tool.position.set(0, 0, 0);
+      tool.scale.set(1, 1, 1);
+    }
+
+    // Traverse the mesh hierarchy to enforce casting/receiving shadows and double-sided materials
+    tool.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        if (child.material) {
+          child.material.side = THREE.DoubleSide;
+
+          // Adjust PBR properties on standard materials to make them render brightly and catch shadows
+          if (child.material.isMeshStandardMaterial || child.material.isMeshPhysicalMaterial) {
+            child.material.roughness = 0.4;
+            child.material.metalness = 0.6;
+          }
+          child.material.needsUpdate = true;
+        }
+      }
+    });
+
     this.tool.container.add(tool);
     this.tool.container.receiveShadow = true;
     this.tool.container.castShadow = true;
 
-    this.tool.container.position.set(0.6, -0.3, -0.5);
-    this.tool.container.scale.set(0.5, 0.5, 0.5);
-    this.tool.container.rotation.z = Math.PI / 2;
-    this.tool.container.rotation.y = Math.PI + 0.2;
+    // Set container position in bottom-right view of first-person camera space
+    this.tool.container.position.set(0.35, -0.25, -0.45);
+    this.tool.container.scale.set(1, 1, 1);
+
+    // Natural pickaxe holding angles
+    this.tool.container.rotation.set(0, 0, 0);
+    this.tool.container.rotation.x = -Math.PI / 4;   // Tilt forward
+    this.tool.container.rotation.y = -Math.PI / 3;   // Rotate inward
+    this.tool.container.rotation.z = Math.PI / 6;    // Angle slightly down
+
+    // Synchronize container visibility to hotbar slot active state on boot/load
+    this.tool.container.visible = (this.activeBlockId === 0);
+
+    console.log(`[Player] Set tool finished. Container visibility:`, this.tool.container.visible);
   }
 
   /**
