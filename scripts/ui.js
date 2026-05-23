@@ -67,6 +67,8 @@ export function setupUI(world, player, physics, scene) {
     world.generate(true);
   });
 
+  gui.hide();
+
   document.addEventListener('keydown', (event) => {
     if (event.code === 'KeyU') {
       if (gui._hidden) {

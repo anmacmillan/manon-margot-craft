@@ -81,8 +81,9 @@ export class World extends THREE.Group {
    * Saves the world data to local storage
    */
   save() {
-    localStorage.setItem('minecraft_params', JSON.stringify(this.params));
-    localStorage.setItem('minecraft_data', JSON.stringify(this.dataStore.data));
+    const playerSuffix = window.playerName || 'default';
+    localStorage.setItem(`minecraft_params_${playerSuffix}`, JSON.stringify(this.params));
+    localStorage.setItem(`minecraft_data_${playerSuffix}`, JSON.stringify(this.dataStore.data));
     document.getElementById('status').innerHTML = 'GAME SAVED';
     setTimeout(() => document.getElementById('status').innerHTML = '', 3000);
   }
@@ -91,11 +92,25 @@ export class World extends THREE.Group {
    * Loads the game from disk
    */
   load() {
-    this.params = JSON.parse(localStorage.getItem('minecraft_params'));
-    this.dataStore.data = JSON.parse(localStorage.getItem('minecraft_data'));
-    document.getElementById('status').innerHTML = 'GAME LOADED';
-    setTimeout(() => document.getElementById('status').innerHTML = '', 3000);
-    this.generate();
+    const playerSuffix = window.playerName || 'default';
+    const savedParams = localStorage.getItem(`minecraft_params_${playerSuffix}`);
+    const savedData = localStorage.getItem(`minecraft_data_${playerSuffix}`);
+    if (savedParams && savedData) {
+      try {
+        this.params = JSON.parse(savedParams);
+        this.dataStore.data = JSON.parse(savedData);
+        document.getElementById('status').innerHTML = 'GAME LOADED';
+        setTimeout(() => document.getElementById('status').innerHTML = '', 3000);
+        this.generate();
+      } catch (err) {
+        console.error('Error loading save game:', err);
+        document.getElementById('status').innerHTML = 'LOAD ERROR';
+        setTimeout(() => document.getElementById('status').innerHTML = '', 3000);
+      }
+    } else {
+      document.getElementById('status').innerHTML = 'NO SAVE FOUND';
+      setTimeout(() => document.getElementById('status').innerHTML = '', 3000);
+    }
   }
 
   /**

@@ -77,3 +77,196 @@ h1 {
   font-size: 2em;
   color: white;
 }
+
+/* ==========================================
+   LAUNCHER PORTAL STYLING (Rich Aesthetics)
+   ========================================== */
+#launcher-portal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: radial-gradient(circle at center, #243b55 0%, #141e30 100%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Minecraft', sans-serif;
+  color: white;
+  transition: opacity 0.5s ease, transform 0.5s ease, visibility 0.5s;
+}
+
+#launcher-portal.hidden {
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(1.05);
+  pointer-events: none;
+}
+
+.launcher-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.pixel-title {
+  font-size: 3.5rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #ffcc00;
+  text-shadow: 4px 4px 0px #4d3d00, 6px 6px 0px #000;
+  margin-bottom: 12px;
+}
+
+.launcher-subtitle {
+  font-size: 1.2rem;
+  color: #a0aab0;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+}
+
+.launcher-cards {
+  display: flex;
+  gap: 30px;
+  max-width: 900px;
+  width: 90%;
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
+.launcher-card {
+  flex: 1;
+  background: rgba(30, 41, 59, 0.7);
+  border: 4px solid #334155;
+  border-radius: 8px;
+  padding: 30px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.15), border-color 0.25s, box-shadow 0.25s;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+}
+
+.launcher-card:hover {
+  transform: translateY(-8px) scale(1.02);
+}
+
+.launcher-card.manon:hover {
+  border-color: #ff66b2;
+  box-shadow: 0 12px 30px rgba(255, 102, 178, 0.35);
+}
+
+.launcher-card.margot:hover {
+  border-color: #00cccc;
+  box-shadow: 0 12px 30px rgba(0, 204, 204, 0.35);
+}
+
+.card-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%);
+  pointer-events: none;
+}
+
+.card-icon {
+  font-size: 3.5rem;
+  margin-bottom: 12px;
+  display: inline-block;
+  animation: bounce 2s infinite ease-in-out;
+}
+
+.launcher-card.manon .card-icon {
+  animation-delay: 0s;
+}
+
+.launcher-card.margot .card-icon {
+  animation-delay: 0.5s;
+}
+
+.launcher-card h2 {
+  font-size: 2.2rem;
+  margin: 10px 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.launcher-card.manon h2 {
+  color: #ff99cc;
+  text-shadow: 2px 2px 0px #800040;
+}
+
+.launcher-card.margot h2 {
+  color: #8be3db;
+  text-shadow: 2px 2px 0px #004d40;
+}
+
+.launcher-card p {
+  font-size: 1rem;
+  color: #e2e8f0;
+  line-height: 1.5;
+  margin-bottom: 25px;
+  min-height: 55px;
+}
+
+/* 3D Pixel Art Buttons */
+.pixel-btn {
+  font-family: 'Minecraft', sans-serif;
+  font-size: 1.15rem;
+  padding: 10px 20px;
+  border: 3px solid;
+  border-radius: 4px;
+  color: white;
+  text-transform: uppercase;
+  cursor: pointer;
+  position: relative;
+  outline: none;
+  width: 100%;
+  transition: background-color 0.1s, transform 0.1s;
+  text-shadow: 2px 2px 0px rgba(0,0,0,0.5);
+  box-shadow: inset 0 -4px 0px rgba(0,0,0,0.4), 0 4px 0px rgba(0,0,0,0.3);
+}
+
+.pixel-btn:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 -2px 0px rgba(0,0,0,0.4), 0 2px 0px rgba(0,0,0,0.3);
+}
+
+.pink-btn {
+  background-color: #ff4d94;
+  border-color: #ff99cc #b30059 #b30059 #ff99cc;
+}
+
+.pink-btn:hover {
+  background-color: #ff66a3;
+}
+
+.teal-btn {
+  background-color: #00b3b3;
+  border-color: #4dffff #006666 #006666 #4dffff;
+}
+
+.teal-btn:hover {
+  background-color: #00cccc;
+}
+
+.launcher-footer {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-top: 30px;
+  text-align: center;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}

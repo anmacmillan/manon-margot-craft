@@ -230,6 +230,8 @@ export class Player {
    * @param {KeyboardEvent} event 
    */
   onKeyDown(event) {
+    if (!window.gameStarted) return;
+
     if (!this.controls.isLocked) {
       this.debugCamera = false;
       this.controls.lock();

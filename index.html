@@ -5,11 +5,38 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Minecraft.js</title>
+  <title>ManonCraft & MargotCraft</title>
   <link rel="stylesheet" href="./style.css">
 </head>
 
 <body>
+  <!-- Launcher Portal Screen -->
+  <div id="launcher-portal">
+    <div class="launcher-header">
+      <div class="pixel-title">Manon & Margot Craft</div>
+      <p class="launcher-subtitle">Select your private sandbox world to begin!</p>
+    </div>
+    <div class="launcher-cards">
+      <div class="launcher-card manon" id="launch-manon">
+        <div class="card-glow"></div>
+        <div class="card-icon">🌸</div>
+        <h2>ManonCraft</h2>
+        <p>A cozy pastel sunset world. Build with soft pink horizons and beautiful golden sands.</p>
+        <button class="pixel-btn pink-btn">Play ManonCraft</button>
+      </div>
+      <div class="launcher-card margot" id="launch-margot">
+        <div class="card-glow"></div>
+        <div class="card-icon">🌊</div>
+        <h2>MargotCraft</h2>
+        <p>A magical teal sea world. Build with vibrant oceans, deep forests, and sparkling blue skies.</p>
+        <button class="pixel-btn teal-btn">Play MargotCraft</button>
+      </div>
+    </div>
+    <div class="launcher-footer">
+      Private Sandboxes for Manon & Margot. Powered by Hostinger. Press 'U' to toggle settings.
+    </div>
+  </div>
+
   <div id="app"></div>
   <div id="info">
     <div id="info-player-position"></div>

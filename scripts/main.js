@@ -7,6 +7,41 @@ import { Physics } from './physics';
 import { setupUI } from './ui';
 import { ModelLoader } from './modelLoader';
 
+window.gameStarted = false;
+window.playerName = '';
+
+// Web Audio synthesizer for a premium retro NES-style chime on launch
+function playStartSound() {
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const playTone = (frequency, startTime, duration) => {
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(frequency, startTime);
+      
+      gainNode.gain.setValueAtTime(0.15, startTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+      
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    };
+    
+    // C4 -> E4 -> G4 -> C5 retro arpeggio
+    const now = audioCtx.currentTime;
+    playTone(261.63, now, 0.15);
+    playTone(329.63, now + 0.08, 0.15);
+    playTone(392.00, now + 0.16, 0.15);
+    playTone(523.25, now + 0.24, 0.35);
+  } catch (e) {
+    console.warn("Web Audio blocked or unsupported:", e);
+  }
+}
+
 // UI Setup
 const stats = new Stats();
 document.body.appendChild(stats.dom);
@@ -30,6 +65,94 @@ scene.add(world);
 
 const player = new Player(scene, world);
 const physics = new Physics(scene);
+
+// Initialize Launcher Card Listeners
+function initLauncher() {
+  const launchGame = (playerType) => {
+    window.playerName = playerType;
+    window.gameStarted = true;
+
+    // Play retro chime sound
+    playStartSound();
+
+    if (playerType === 'manon') {
+      world.params.seed = 12345;
+      world.generate(true); // true to clear cache and rebuild!
+
+      // Warm, cozy pinkish sunset sky
+      renderer.setClearColor(0xffccd5);
+      scene.fog.color.setHex(0xffccd5);
+      scene.fog.near = 40;
+      scene.fog.far = 70;
+      if (sun) {
+        sun.color.setHex(0xffebeb);
+        sun.intensity = 1.6;
+      }
+
+      // Customize instructions overlay
+      const title = document.querySelector('#instructions h1');
+      if (title) {
+        title.innerText = 'MANONCRAFT';
+        title.style.color = '#ff4d94';
+        title.style.textShadow = '3px 3px 0px #800040';
+      }
+    } else if (playerType === 'margot') {
+      world.params.seed = 67890;
+      world.generate(true); // true to clear cache and rebuild!
+
+      // Magical teal sea sky
+      renderer.setClearColor(0x8be3db);
+      scene.fog.color.setHex(0x8be3db);
+      scene.fog.near = 45;
+      scene.fog.far = 80;
+      if (sun) {
+        sun.color.setHex(0xe0f7fa);
+        sun.intensity = 1.5;
+      }
+
+      // Customize instructions overlay
+      const title = document.querySelector('#instructions h1');
+      if (title) {
+        title.innerText = 'MARGOTCRAFT';
+        title.style.color = '#00cccc';
+        title.style.textShadow = '3px 3px 0px #004d40';
+      }
+    }
+
+    // Fade out launcher portal
+    const portal = document.getElementById('launcher-portal');
+    if (portal) {
+      portal.classList.add('hidden');
+    }
+
+    // Automatically trigger pointer lock control after transition
+    setTimeout(() => {
+      player.controls.lock();
+    }, 800);
+  };
+
+  const manonBtn = document.getElementById('launch-manon');
+  if (manonBtn) {
+    manonBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      launchGame('manon');
+    });
+  }
+
+  const margotBtn = document.getElementById('launch-margot');
+  if (margotBtn) {
+    margotBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      launchGame('margot');
+    });
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initLauncher);
+} else {
+  initLauncher();
+}
 
 // Camera setup
 const orbitCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
