@@ -133,7 +133,7 @@ function initLauncher() {
     if (instructionsList) {
       if (selectedMode === 'creative') {
         instructionsList.innerHTML = `
-          WASD / ZQSD - Move<br>
+          WASD / ZQSD / ARROWS - Move<br>
           SPACE - Fly Up<br>
           SHIFT / C / CTRL - Fly Down<br>
           R - Reset Camera<br>
@@ -146,7 +146,7 @@ function initLauncher() {
         `;
       } else {
         instructionsList.innerHTML = `
-          WASD / ZQSD - Move<br>
+          WASD / ZQSD / ARROWS - Move<br>
           SHIFT - Sprint<br>
           SPACE - Jump<br>
           R - Reset Camera<br>

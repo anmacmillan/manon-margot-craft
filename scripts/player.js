@@ -156,11 +156,11 @@ export class Player {
    * @param {Number} dt 
    */
   applyInputs(dt) {
-    // Calculate movement inputs dynamically from both physical keys (layout-independent) and characters
-    const moveForward = this.keysPressed['KeyW'] || this.keysPressed['w'] || this.keysPressed['z'];
-    const moveBackward = this.keysPressed['KeyS'] || this.keysPressed['s'];
-    const moveLeft = this.keysPressed['KeyA'] || this.keysPressed['a'] || this.keysPressed['q'];
-    const moveRight = this.keysPressed['KeyD'] || this.keysPressed['d'];
+    // Calculate movement inputs dynamically from physical keys, characters, or arrow keys
+    const moveForward = this.keysPressed['KeyW'] || this.keysPressed['w'] || this.keysPressed['z'] || this.keysPressed['ArrowUp'];
+    const moveBackward = this.keysPressed['KeyS'] || this.keysPressed['s'] || this.keysPressed['ArrowDown'];
+    const moveLeft = this.keysPressed['KeyA'] || this.keysPressed['a'] || this.keysPressed['q'] || this.keysPressed['ArrowLeft'];
+    const moveRight = this.keysPressed['KeyD'] || this.keysPressed['d'] || this.keysPressed['ArrowRight'];
 
     this.input.z = 0;
     if (moveForward) this.input.z = this.maxSpeed;
