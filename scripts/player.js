@@ -82,6 +82,7 @@ export class Player {
     document.addEventListener('keyup', this.onKeyUp.bind(this));
     document.addEventListener('keydown', this.onKeyDown.bind(this));
     document.addEventListener('mousedown', this.onMouseDown.bind(this));
+    document.addEventListener('wheel', this.onWheel.bind(this), { passive: false });
 
     // Reset key presses on window blur to prevent stuck key issues (like infinite flying)
     window.addEventListener('blur', () => {
@@ -155,29 +156,41 @@ export class Player {
    * @param {Number} dt 
    */
   applyInputs(dt) {
-    if (this.controls.isLocked === true) {
-      this.velocity.x = this.input.x * (this.sprinting ? 1.5 : 1);
-      this.velocity.z = this.input.z * (this.sprinting ? 1.5 : 1);
-      this.controls.moveRight(this.velocity.x * dt);
-      this.controls.moveForward(this.velocity.z * dt);
+    // Calculate movement inputs dynamically from both physical keys (layout-independent) and characters
+    const moveForward = this.keysPressed['KeyW'] || this.keysPressed['w'] || this.keysPressed['z'];
+    const moveBackward = this.keysPressed['KeyS'] || this.keysPressed['s'];
+    const moveLeft = this.keysPressed['KeyA'] || this.keysPressed['a'] || this.keysPressed['q'];
+    const moveRight = this.keysPressed['KeyD'] || this.keysPressed['d'];
 
-      // Handle continuous Creative Flight
-      if (this.gameMode === 'creative') {
-        let flySpeed = this.maxSpeed * (this.sprinting ? 2.0 : 1.0);
-        this.velocity.y = 0; // Standard creative behavior: hover still unless input is held
-        if (this.keysPressed['Space']) {
-          this.velocity.y = flySpeed;
-        } else if (this.keysPressed['ShiftLeft'] || this.keysPressed['ShiftRight']) {
-          this.velocity.y = -flySpeed;
-        }
+    this.input.z = 0;
+    if (moveForward) this.input.z = this.maxSpeed;
+    if (moveBackward) this.input.z = -this.maxSpeed;
+
+    this.input.x = 0;
+    if (moveLeft) this.input.x = -this.maxSpeed;
+    if (moveRight) this.input.x = this.maxSpeed;
+
+    this.velocity.x = this.input.x * (this.sprinting ? 1.5 : 1);
+    this.velocity.z = this.input.z * (this.sprinting ? 1.5 : 1);
+    this.controls.moveRight(this.velocity.x * dt);
+    this.controls.moveForward(this.velocity.z * dt);
+
+    // Handle continuous Creative Flight
+    if (this.gameMode === 'creative') {
+      let flySpeed = this.maxSpeed * (this.sprinting ? 2.0 : 1.0);
+      this.velocity.y = 0; // Standard creative behavior: hover still unless input is held
+      if (this.keysPressed['Space']) {
+        this.velocity.y = flySpeed;
+      } else if (this.keysPressed['ShiftLeft'] || this.keysPressed['ShiftRight']) {
+        this.velocity.y = -flySpeed;
       }
+    }
 
-      this.position.y += this.velocity.y * dt;
+    this.position.y += this.velocity.y * dt;
 
-      if (this.position.y < 0) {
-        this.position.y = 0;
-        this.velocity.y = 0;
-      }
+    if (this.position.y < 0) {
+      this.position.y = 0;
+      this.velocity.y = 0;
     }
 
     document.getElementById('info-player-position').innerHTML = this.toString();
@@ -252,6 +265,7 @@ export class Player {
     if (!window.gameStarted) return;
 
     this.keysPressed[event.code] = true;
+    this.keysPressed[event.key.toLowerCase()] = true;
 
     if (!this.controls.isLocked) {
       this.debugCamera = false;
@@ -277,18 +291,6 @@ export class Player {
         // Update the pickaxe visibility
         this.tool.container.visible = (this.activeBlockId === 0);
 
-        break;
-      case 'KeyW':
-        this.input.z = this.maxSpeed;
-        break;
-      case 'KeyA':
-        this.input.x = -this.maxSpeed;
-        break;
-      case 'KeyS':
-        this.input.z = -this.maxSpeed;
-        break;
-      case 'KeyD':
-        this.input.x = this.maxSpeed;
         break;
       case 'KeyR':
         if (this.repeat) break;
@@ -318,20 +320,9 @@ export class Player {
    */
   onKeyUp(event) {
     this.keysPressed[event.code] = false;
+    this.keysPressed[event.key.toLowerCase()] = false;
 
     switch (event.code) {
-      case 'KeyW':
-        this.input.z = 0;
-        break;
-      case 'KeyA':
-        this.input.x = 0;
-        break;
-      case 'KeyS':
-        this.input.z = 0;
-        break;
-      case 'KeyD':
-        this.input.x = 0;
-        break;
       case 'ShiftLeft':
       case 'ShiftRight':
         this.sprinting = false;
@@ -387,6 +378,34 @@ export class Player {
         }
       }
     }
+  }
+
+  /**
+   * Event handler for mouse wheel or trackpad scroll to cycle hotbar block slots
+   * @param {WheelEvent} event
+   */
+  onWheel(event) {
+    if (!this.controls.isLocked) return;
+
+    // Prevent default browser behavior (like zoom or scrolling the page)
+    event.preventDefault();
+
+    // Determine scroll direction: deltaY > 0 is scroll down, deltaY < 0 is scroll up
+    const delta = Math.sign(event.deltaY);
+
+    // Calculate the new hotbar block slot (wrapping between 0 and 8)
+    let newBlockId = this.activeBlockId + delta;
+    if (newBlockId < 0) newBlockId = 8;
+    if (newBlockId > 8) newBlockId = 0;
+
+    // Update the visual toolbar selection classes
+    document.getElementById(`toolbar-${this.activeBlockId}`)?.classList.remove('selected');
+    document.getElementById(`toolbar-${newBlockId}`)?.classList.add('selected');
+
+    this.activeBlockId = newBlockId;
+
+    // Toggle tool/pickaxe visibility depending on active block slot
+    this.tool.container.visible = (this.activeBlockId === 0);
   }
 
   /**
