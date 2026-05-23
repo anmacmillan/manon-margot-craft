@@ -281,16 +281,28 @@ export class Player {
       case 'Digit6':
       case 'Digit7':
       case 'Digit8':
+      case 'Numpad0':
+      case 'Numpad1':
+      case 'Numpad2':
+      case 'Numpad3':
+      case 'Numpad4':
+      case 'Numpad5':
+      case 'Numpad6':
+      case 'Numpad7':
+      case 'Numpad8': {
+        const digit = Number(event.code.slice(-1));
+
         // Update the selected toolbar icon
         document.getElementById(`toolbar-${this.activeBlockId}`)?.classList.remove('selected');
-        document.getElementById(`toolbar-${event.key}`)?.classList.add('selected');
+        document.getElementById(`toolbar-${digit}`)?.classList.add('selected');
 
-        this.activeBlockId = Number(event.key);
+        this.activeBlockId = digit;
 
         // Update the pickaxe visibility
         this.tool.container.visible = (this.activeBlockId === 0);
 
         break;
+      }
       case 'KeyR':
         if (this.repeat) break;
         this.position.y = 32;
