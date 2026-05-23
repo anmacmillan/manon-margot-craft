@@ -81,6 +81,15 @@ function initLauncher() {
     // Play retro chime sound
     playStartSound();
 
+    // Configure selected Outfit / Skin customization
+    const selectedSkin = document.getElementById(`skin-${playerType}`)?.value || 'standard';
+    player.avatarSkin = selectedSkin;
+    console.log(`Initializing local avatar for ${playerType} with skin ${selectedSkin}`);
+    player.initAvatar(playerType, selectedSkin);
+
+    // Reveal floating magic structures spawner panel
+    document.getElementById('magic-spawner-container')?.classList.remove('hidden');
+
     // Configure selected Game Mode (Creative vs Survival)
     const selectedMode = document.getElementById(`mode-${playerType}`)?.value || 'creative';
     player.gameMode = selectedMode;
@@ -218,6 +227,31 @@ function initLauncher() {
     e.stopPropagation();
     launchGame('margot', 'client');
   });
+
+  // Bind Floating Magic Spawner Sidebar buttons
+  const bindSpawnerBtn = (id, type) => {
+    document.getElementById(id)?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      
+      // If already active, toggle it off
+      if (player.activeSpawner === type) {
+        player.activeSpawner = null;
+        document.getElementById(id)?.classList.remove('active');
+      } else {
+        // Clear other active classes
+        document.querySelectorAll('.spawner-btn').forEach(btn => btn.classList.remove('active'));
+        player.activeSpawner = type;
+        document.getElementById(id)?.classList.add('active');
+        
+        // Auto-lock pointer to make aiming easier for the girls!
+        player.controls.lock();
+      }
+    });
+  };
+
+  bindSpawnerBtn('spawn-gothic-castle', 'gothic-castle');
+  bindSpawnerBtn('spawn-crystal-palace', 'crystal-palace');
+  bindSpawnerBtn('spawn-cosmic-galaxy', 'cosmic-galaxy');
 }
 
 if (document.readyState === 'loading') {

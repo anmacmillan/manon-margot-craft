@@ -385,3 +385,97 @@ h1 {
     transform: translateY(-8px);
   }
 }
+
+/* ==========================================
+   MAGIC STRUCTURE SPAWNER PANEL STYLING
+   ========================================== */
+#magic-spawner-container {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 210px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 4px solid #8338ec;
+  border-radius: 8px;
+  padding: 16px;
+  color: white;
+  font-family: 'Minecraft', sans-serif;
+  text-align: center;
+  box-shadow: 0 4px 25px rgba(0,0,0,0.6);
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+}
+
+#magic-spawner-container.hidden {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(30px);
+  pointer-events: none;
+}
+
+#magic-spawner-header {
+  font-size: 1.25rem;
+  color: #ffd700;
+  text-shadow: 2px 2px 0px #805c00;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.spawner-btn {
+  font-family: 'Minecraft', sans-serif;
+  font-size: 0.9rem;
+  padding: 10px 12px;
+  border: 3px solid;
+  border-radius: 4px;
+  color: white;
+  text-transform: uppercase;
+  cursor: pointer;
+  position: relative;
+  outline: none;
+  width: 100%;
+  margin-bottom: 8px;
+  transition: background-color 0.1s, transform 0.1s, border-color 0.1s;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+  box-shadow: inset 0 -3px 0px rgba(0,0,0,0.4), 0 3px 0px rgba(0,0,0,0.3);
+}
+
+.spawner-btn:last-child {
+  margin-bottom: 0;
+}
+
+.spawner-btn:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 -1px 0px rgba(0,0,0,0.4), 0 1px 0px rgba(0,0,0,0.3);
+}
+
+.spawner-btn.gothic-castle {
+  background-color: #3b2a56;
+  border-color: #5c3f85 #1d142d #1d142d #5c3f85;
+}
+.spawner-btn.gothic-castle:hover {
+  background-color: #4f346e;
+}
+
+.spawner-btn.crystal-palace {
+  background-color: #ff4ea3;
+  border-color: #ff94cc #b3105f #b3105f #ff94cc;
+}
+.spawner-btn.crystal-palace:hover {
+  background-color: #ff71b4;
+}
+
+.spawner-btn.cosmic-galaxy {
+  background-color: #0d3b66;
+  border-color: #0077b6 #001219 #001219 #0077b6;
+}
+.spawner-btn.cosmic-galaxy:hover {
+  background-color: #0077b6;
+}
+
+/* Highlight active/selected spawner button */
+.spawner-btn.selected-spawner {
+  border-color: #ffd700 !important;
+  box-shadow: 0 0 12px #ffd700, inset 0 -3px 0px rgba(0,0,0,0.4);
+}

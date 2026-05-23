@@ -160,6 +160,9 @@ export class World extends THREE.Group {
    * @param {Player} player 
    */
   update(player) {
+    // Process block-by-block construction animation
+    this.updateBlockQueue();
+
     const visibleChunks = this.getVisibleChunks(player);
     const chunksToAdd = this.getChunksToAdd(visibleChunks);
     this.removeUnusedChunks(visibleChunks);
@@ -436,5 +439,188 @@ export class World extends THREE.Group {
         coords.block.z
       )
     }
+  }
+
+  // --- MAGIC STRUCTURE SPAWNER ENGINE ---
+  blockQueue = [];
+
+  /**
+   * Process procedural building queue step-by-step
+   */
+  updateBlockQueue() {
+    if (this.blockQueue.length === 0) return;
+
+    // Build 25 blocks per frame with retro sound chirps
+    const blocksToPlace = Math.min(this.blockQueue.length, 25);
+    let chirped = false;
+
+    for (let i = 0; i < blocksToPlace; i++) {
+      const b = this.blockQueue.shift();
+      if (!b) continue;
+
+      if (b.action === 'add') {
+        this.addBlock(b.x, b.y, b.z, b.blockId);
+        window.network?.sendBlockChange('add', b.x, b.y, b.z, b.blockId);
+      } else if (b.action === 'remove') {
+        this.removeBlock(b.x, b.y, b.z);
+        window.network?.sendBlockChange('remove', b.x, b.y, b.z);
+      }
+
+      // Play a retro NES pop sound on block spawn (throttled to once per frame)
+      if (!chirped && i === 0) {
+        this.playPopSound();
+        chirped = true;
+      }
+    }
+  }
+
+  /**
+   * Play simple Web Audio chiptune synth pop on block place
+   */
+  playPopSound() {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(400 + Math.random() * 200, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+
+      gainNode.gain.setValueAtTime(0.04, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1);
+
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.1);
+    } catch (e) {}
+  }
+
+  /**
+   * Procedural structure spawner definitions
+   */
+  spawnStructure(type, originX, originY, originZ) {
+    console.log(`[World] Queuing structure spawner: ${type} at (${originX}, ${originY}, ${originZ})`);
+    const tempQueue = [];
+
+    if (type === 'gothic-castle') {
+      const radius = 4;
+      const height = 10;
+      for (let dy = 0; dy <= height; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          for (let dz = -radius; dz <= radius; dz++) {
+            const dist = Math.sqrt(dx*dx + dz*dz);
+            // Draw circular shell
+            if (dist > radius - 0.7 && dist < radius + 0.3) {
+              // Entryway gap on front (z = radius)
+              if (dy >= 1 && dy <= 3 && dz > 2 && Math.abs(dx) <= 1) {
+                continue;
+              }
+              
+              // Top battlements
+              if (dy === height) {
+                if ((Math.floor(Math.atan2(dz, dx) * 4) % 2) === 0) {
+                  tempQueue.push({ action: 'add', x: originX + dx, y: originY + dy, z: originZ + dz, blockId: 4 }); // Coal Ore (Obsidian)
+                }
+              } else {
+                const blockId = (dy % 4 === 0) ? 4 : 3; // Banding pattern
+                tempQueue.push({ action: 'add', x: originX + dx, y: originY + dy, z: originZ + dz, blockId: blockId });
+              }
+            }
+          }
+        }
+      }
+      
+      // Iron grate portcullis above gate
+      tempQueue.push({ action: 'add', x: originX, y: originY + 4, z: originZ + 4, blockId: 5 });
+      tempQueue.push({ action: 'add', x: originX - 1, y: originY + 4, z: originZ + 4, blockId: 5 });
+      tempQueue.push({ action: 'add', x: originX + 1, y: originY + 4, z: originZ + 4, blockId: 5 });
+
+    } else if (type === 'crystal-palace') {
+      const size = 4; // 9x9 pavilion
+      const pillarHeight = 6;
+
+      // 1. Foundation Platform
+      for (let dx = -size; dx <= size; dx++) {
+        for (let dz = -size; dz <= size; dz++) {
+          tempQueue.push({ action: 'add', x: originX + dx, y: originY, z: originZ + dz, blockId: 10 }); // Snow (White Marble)
+        }
+      }
+
+      // 2. Corner Pillars
+      const corners = [-size, size];
+      for (const cx of corners) {
+        for (const cz of corners) {
+          for (let dy = 1; dy <= pillarHeight; dy++) {
+            tempQueue.push({ action: 'add', x: originX + cx, y: originY + dy, z: originZ + cz, blockId: 8 }); // Sand (Gold)
+          }
+        }
+      }
+
+      // 3. Flat Ceiling & Floating Dome
+      for (let dx = -size; dx <= size; dx++) {
+        for (let dz = -size; dz <= size; dz++) {
+          if (Math.abs(dx) === size || Math.abs(dz) === size) {
+            tempQueue.push({ action: 'add', x: originX + dx, y: originY + pillarHeight, z: originZ + dz, blockId: 8 });
+          } else {
+            const dist = Math.sqrt(dx*dx + dz*dz);
+            if (dist <= 3) {
+              const domeY = pillarHeight + Math.floor(4 - dist);
+              tempQueue.push({ action: 'add', x: originX + dx, y: originY + domeY, z: originZ + dz, blockId: 7 }); // Leaves (Pink Princess Canopy)
+            }
+          }
+        }
+      }
+
+      // 4. Central Fountain
+      for (let dy = 1; dy <= 4; dy++) {
+        tempQueue.push({ action: 'add', x: originX, y: originY + dy, z: originZ, blockId: 10 });
+      }
+      tempQueue.push({ action: 'add', x: originX, y: originY + 5, z: originZ, blockId: 9 }); // Cloud spout head
+      tempQueue.push({ action: 'add', x: originX + 1, y: originY + 3, z: originZ, blockId: 9 });
+      tempQueue.push({ action: 'add', x: originX - 1, y: originY + 3, z: originZ, blockId: 9 });
+      tempQueue.push({ action: 'add', x: originX, y: originY + 3, z: originZ + 1, blockId: 9 });
+      tempQueue.push({ action: 'add', x: originX, y: originY + 3, z: originZ - 1, blockId: 9 });
+
+    } else if (type === 'cosmic-galaxy') {
+      const numParticles = 120;
+      for (let i = 0; i < numParticles; i++) {
+        const t = (i / numParticles) * Math.PI * 4; // 2 rotations
+        const r = (i / numParticles) * 12;          // radius grows to 12
+        
+        // Arm 1
+        const x1 = Math.round(r * Math.cos(t));
+        const z1 = Math.round(r * Math.sin(t));
+        // Arm 2 (180 deg offset)
+        const x2 = Math.round(r * Math.cos(t + Math.PI));
+        const z2 = Math.round(r * Math.sin(t + Math.PI));
+
+        // Stellar block cycling: Cloud -> Gold -> Iron -> Obsidian
+        const blockId = (i % 4 === 0) ? 9 : (i % 4 === 1) ? 8 : (i % 4 === 2) ? 5 : 4;
+
+        tempQueue.push({ action: 'add', x: originX + x1, y: originY, z: originZ + z1, blockId });
+        if (i % 5 === 0) {
+          tempQueue.push({ action: 'add', x: originX + x1, y: originY + 1, z: originZ + z1, blockId: 9 });
+        }
+
+        tempQueue.push({ action: 'add', x: originX + x2, y: originY, z: originZ + z2, blockId });
+        if (i % 5 === 0) {
+          tempQueue.push({ action: 'add', x: originX + x2, y: originY + 1, z: originZ + z2, blockId: 9 });
+        }
+      }
+
+      // Center bright star core
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dz = -1; dz <= 1; dz++) {
+          tempQueue.push({ action: 'add', x: originX + dx, y: originY, z: originZ + dz, blockId: 9 });
+          tempQueue.push({ action: 'add', x: originX + dx, y: originY + 1, z: originZ + dz, blockId: 8 });
+        }
+      }
+    }
+
+    // Append to existing building queue
+    this.blockQueue.push(...tempQueue);
   }
 }

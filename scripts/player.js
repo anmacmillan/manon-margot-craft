@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { World } from './world';
 import { blocks } from './blocks';
+import { buildAvatar, updateAvatarAnimations } from './avatar.js';
 
 const CENTER_SCREEN = new THREE.Vector2();
 
@@ -41,8 +42,10 @@ export class Player {
   }
 
   constructor(scene, world) {
+    this.scene = scene;
     this.world = world;
     this.gameMode = 'creative'; // Default to creative mode (God Mode)
+    this.activeSpawner = null;  // Magic Spawner selection tracker
     this.keysPressed = {};      // Key state tracker for smooth flight and noclip movement
     this.position.set(32, 32, 32);
     this.cameraHelper.visible = false;
@@ -116,6 +119,49 @@ export class Player {
     if (this.tool.animate) {
       this.updateToolAnimation();
     }
+
+    // Sync and animate local 3D avatar if initialized
+    if (this.avatarGroup) {
+      // Sync coordinates: localAvatar center.y = feet position + 1.02 = (player.position.y - player.height) + 1.02
+      this.avatarGroup.position.copy(this.position);
+      this.avatarGroup.position.y = (this.position.y - this.height) + 1.02;
+
+      // Sync orientation: we can match the camera's Y rotation
+      this.avatarGroup.rotation.y = this.camera.rotation.y;
+
+      // Toggle visibility: only show when controls are unlocked (Orbit View)
+      this.avatarGroup.visible = !this.controls.isLocked;
+
+      // Is the player moving? Check if movement keys are pressed
+      const isMoving = this.keysPressed['KeyW'] || this.keysPressed['w'] || this.keysPressed['z'] || this.keysPressed['ArrowUp'] ||
+                       this.keysPressed['KeyS'] || this.keysPressed['s'] || this.keysPressed['ArrowDown'] ||
+                       this.keysPressed['KeyA'] || this.keysPressed['a'] || this.keysPressed['q'] || this.keysPressed['ArrowLeft'] ||
+                       this.keysPressed['KeyD'] || this.keysPressed['d'] || this.keysPressed['ArrowRight'];
+
+      // Update limbs and accessories
+      updateAvatarAnimations(this.avatarData, performance.now(), isMoving);
+    }
+  }
+
+  /**
+   * Set up local player 3D avatar
+   */
+  initAvatar(name, skin) {
+    if (this.avatarGroup) {
+      this.scene.remove(this.avatarGroup);
+    }
+    this.avatarName = name;
+    this.avatarSkin = skin;
+
+    // Use our modular builder
+    const avatarData = buildAvatar(name, skin);
+    this.avatarGroup = avatarData.group;
+    this.avatarData = avatarData;
+
+    // Default to invisible in locked first person
+    this.avatarGroup.visible = false;
+    this.scene.add(this.avatarGroup);
+    console.log(`[Player] Initialized local 3D avatar for ${name} with skin ${skin}`);
   }
 
   /**
@@ -421,6 +467,21 @@ export class Player {
     if (this.controls.isLocked) {
       // Is a block selected?
       if (this.selectedCoords) {
+        // Intercept block placement if a magic spawner is active!
+        if (this.activeSpawner) {
+          this.world.spawnStructure(
+            this.activeSpawner,
+            this.selectedCoords.x,
+            this.selectedCoords.y,
+            this.selectedCoords.z
+          );
+          
+          // Reset active spawner state
+          this.activeSpawner = null;
+          document.querySelectorAll('.spawner-btn').forEach(btn => btn.classList.remove('active'));
+          return;
+        }
+
         // If active block is an empty block, then we are in delete mode
         if (this.activeBlockId === blocks.empty.id) {
           this.world.removeBlock(

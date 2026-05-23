@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildAvatar, updateAvatarAnimations } from './avatar.js';
 
 export class NetworkManager {
   constructor(scene, world, player) {
@@ -132,10 +133,10 @@ export class NetworkManager {
           seed: this.world.params.seed,
           blockData: this.world.dataStore.data,
           hostName: this.playerName,
-          gameMode: this.player.gameMode
+          gameMode: this.player.gameMode,
+          avatarSkin: this.player.avatarSkin || 'standard'
         });
 
-        this.spawnRemoteAvatar(this.sisterName);
         setTimeout(() => {
           statusEl.innerHTML = `Playing Co-op with ${this.sisterName.toUpperCase()}`;
         }, 2000);
@@ -143,7 +144,8 @@ export class NetworkManager {
         // Client sends immediate handshake to host
         this.conn.send({
           type: 'hello',
-          clientName: this.playerName
+          clientName: this.playerName,
+          avatarSkin: this.player.avatarSkin || 'standard'
         });
       }
     });
@@ -189,7 +191,7 @@ export class NetworkManager {
         this.world.generate(true);
         
         // Spawn host's avatar
-        this.spawnRemoteAvatar(data.hostName);
+        this.spawnRemoteAvatar(data.hostName, data.avatarSkin || 'standard');
 
         statusEl.innerHTML = `Playing Co-op with ${data.hostName.toUpperCase()}`;
         
@@ -200,8 +202,8 @@ export class NetworkManager {
 
       case 'hello':
         // Host receives client's introduction
-        console.log(`Client introduced as: ${data.clientName}`);
-        this.spawnRemoteAvatar(data.clientName);
+        console.log(`Client introduced as: ${data.clientName} with skin ${data.avatarSkin}`);
+        this.spawnRemoteAvatar(data.clientName, data.avatarSkin || 'standard');
         statusEl.innerHTML = `Playing Co-op with ${data.clientName.toUpperCase()}`;
         break;
 
@@ -315,128 +317,39 @@ export class NetworkManager {
   /**
    * Build a custom-textured pixel-art 3D player avatar for the sister
    */
-  spawnRemoteAvatar(sisterName) {
+  spawnRemoteAvatar(sisterName, skinName = 'standard') {
     if (this.remoteAvatar) {
       this.scene.remove(this.remoteAvatar);
     }
 
-    console.log(`Spawning 3D avatar for: ${sisterName}`);
-    this.remoteAvatar = new THREE.Group();
-
-    // Color definitions
-    const hairColor = sisterName === 'manon' ? '#5c3a21' : '#fce181'; // Brown vs Blonde
-    const shirtColor = sisterName === 'manon' ? '#ff66b2' : '#00cccc'; // Pink vs Teal
-    const skinColor = '#ffdbac';
-    const pantsColor = '#3a4e93';
-    const shoeColor = '#241a0f';
-
-    // Helper to create pixelated canvas texture
-    const createPixelMaterial = (colorHex, faceType = '') => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 32;
-      canvas.height = 32;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = colorHex;
-      ctx.fillRect(0, 0, 32, 32);
-
-      if (faceType === 'front') {
-        // Draw pixelated face
-        // 1. Two blue/brown eyes
-        ctx.fillStyle = '#1e3c72';
-        ctx.fillRect(8, 12, 4, 4);
-        ctx.fillRect(20, 12, 4, 4);
-        // 2. Rosy cheeks
-        ctx.fillStyle = '#ff99aa';
-        ctx.fillRect(4, 18, 4, 3);
-        ctx.fillRect(24, 18, 4, 3);
-        // 3. Smiley mouth
-        ctx.fillStyle = '#d35252';
-        ctx.fillRect(12, 22, 8, 3);
-      } else if (faceType === 'top') {
-        // Add hair outline
-        ctx.fillStyle = hairColor;
-        ctx.fillRect(0, 0, 32, 32);
-      } else if (faceType === 'sides') {
-        // Hair wraps on the sides
-        ctx.fillStyle = hairColor;
-        ctx.fillRect(0, 0, 32, 14);
-      }
-
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.magFilter = THREE.NearestFilter;
-      texture.minFilter = THREE.NearestFilter;
-      return new THREE.MeshStandardMaterial({ map: texture, roughness: 0.8 });
-    };
-
-    // 1. HEAD construction
-    // Standard materials order: +X, -X, +Y, -Y, +Z, -Z
-    const headMaterials = [
-      createPixelMaterial(skinColor, 'sides'), // Right
-      createPixelMaterial(skinColor, 'sides'), // Left
-      createPixelMaterial(hairColor, 'top'),   // Top
-      createPixelMaterial(skinColor),          // Bottom
-      createPixelMaterial(skinColor, 'front'), // Front Face
-      createPixelMaterial(hairColor)           // Back
-    ];
-    this.head = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.48, 0.48), headMaterials);
-    this.head.position.y = 0.64;
-    this.head.castShadow = true;
-    this.remoteAvatar.add(this.head);
-
-    // 2. BODY construction
-    const bodyMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.8 });
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.72, 0.24), bodyMat);
-    body.position.y = 0.06;
-    body.castShadow = true;
-    body.receiveShadow = true;
-    this.remoteAvatar.add(body);
-
-    // 3. ARMS construction
-    const armGeo = new THREE.BoxGeometry(0.14, 0.72, 0.14);
-    const armMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.8 });
+    console.log(`Spawning 3D avatar for: ${sisterName} with skin ${skinName}`);
     
-    this.leftArm = new THREE.Mesh(armGeo, armMat);
-    this.leftArm.position.set(-0.33, 0.06, 0);
-    this.leftArm.castShadow = true;
-    this.remoteAvatar.add(this.leftArm);
+    // Build procedural custom-accessorized avatar
+    const avatarData = buildAvatar(sisterName, skinName);
+    this.remoteAvatar = avatarData.group;
+    this.remoteAvatarData = avatarData;
 
-    this.rightArm = new THREE.Mesh(armGeo, armMat);
-    this.rightArm.position.set(0.33, 0.06, 0);
-    this.rightArm.castShadow = true;
-    this.remoteAvatar.add(this.rightArm);
+    // Limb and helper mappings
+    this.leftArm = avatarData.leftArm;
+    this.rightArm = avatarData.rightArm;
+    this.leftLeg = avatarData.leftLeg;
+    this.rightLeg = avatarData.rightLeg;
 
-    // 4. LEGS construction
-    const legGeo = new THREE.BoxGeometry(0.18, 0.72, 0.18);
-    const legMat = new THREE.MeshStandardMaterial({ color: pantsColor, roughness: 0.8 });
-    
-    this.leftLeg = new THREE.Mesh(legGeo, legMat);
-    this.leftLeg.position.set(-0.11, -0.66, 0);
-    this.leftLeg.castShadow = true;
-    this.remoteAvatar.add(this.leftLeg);
-
-    this.rightLeg = new THREE.Mesh(legGeo, legMat);
-    this.rightLeg.position.set(0.11, -0.66, 0);
-    this.rightLeg.castShadow = true;
-    this.remoteAvatar.add(this.rightLeg);
-
-    // 5. NAME TAG creation
+    // Custom-colored Name Tag creation
     const tagCanvas = document.createElement('canvas');
     tagCanvas.width = 160;
     tagCanvas.height = 40;
     const tagCtx = tagCanvas.getContext('2d');
     
-    // Transparent pill background
     tagCtx.fillStyle = 'rgba(16, 24, 40, 0.75)';
     tagCtx.beginPath();
     tagCtx.roundRect(4, 4, 152, 32, 12);
     tagCtx.fill();
 
-    // Border
     tagCtx.lineWidth = 2;
-    tagCtx.strokeStyle = shirtColor;
+    tagCtx.strokeStyle = (sisterName === 'manon') ? '#ff66b2' : '#00cccc';
     tagCtx.stroke();
 
-    // White retro text
     tagCtx.fillStyle = '#ffffff';
     tagCtx.font = 'bold 16px Courier New, sans-serif';
     tagCtx.textAlign = 'center';
@@ -478,23 +391,8 @@ export class NetworkManager {
     const velocity = this.remotePosition.distanceTo(this.lastRemotePosition) / (dt || 0.016);
     this.isMoving = velocity > 0.05;
 
-    if (this.isMoving) {
-      // Swing limbs back and forth using a sine wave based on time
-      const speedFactor = 15;
-      const angle = 0.6 * Math.sin(performance.now() * 0.01 * speedFactor);
-      
-      this.leftLeg.rotation.x = angle;
-      this.rightLeg.rotation.x = -angle;
-      this.leftArm.rotation.x = -angle;
-      this.rightArm.rotation.x = angle;
-    } else {
-      // Lerp limbs smoothly back to standard resting positions when idle
-      const restSpeed = 0.15;
-      this.leftLeg.rotation.x += (0 - this.leftLeg.rotation.x) * restSpeed;
-      this.rightLeg.rotation.x += (0 - this.rightLeg.rotation.x) * restSpeed;
-      this.leftArm.rotation.x += (0 - this.leftArm.rotation.x) * restSpeed;
-      this.rightArm.rotation.x += (0 - this.rightArm.rotation.x) * restSpeed;
-    }
+    // Animate custom accessories & limbs
+    updateAvatarAnimations(this.remoteAvatarData, performance.now(), this.isMoving);
 
     this.lastRemotePosition.copy(this.remotePosition);
   }
