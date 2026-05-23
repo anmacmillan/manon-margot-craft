@@ -267,11 +267,6 @@ export class Player {
     this.keysPressed[event.code] = true;
     this.keysPressed[event.key.toLowerCase()] = true;
 
-    if (!this.controls.isLocked) {
-      this.debugCamera = false;
-      this.controls.lock();
-    }
-
     switch (event.code) {
       case 'Digit0':
       case 'Digit1':
@@ -335,8 +330,15 @@ export class Player {
    * @param {MouseEvent} event 
    */
   onMouseDown(event) {
+    if (!window.gameStarted) return;
+
     if (!this.controls.isLocked) {
-      this.controls.lock();
+      // Only request lock when explicitly clicking the 3D canvas or the instruction overlay
+      const isOverlayClick = event.target.closest('#overlay') !== null;
+      const isCanvasClick = event.target === window.renderer?.domElement;
+      if (isOverlayClick || isCanvasClick) {
+        this.controls.lock();
+      }
       return;
     }
 
