@@ -330,6 +330,8 @@ export class Player {
             this.selectedCoords.y,
             this.selectedCoords.z
           );
+          // Send block removal packet to sister
+          window.network?.sendBlockChange('remove', this.selectedCoords.x, this.selectedCoords.y, this.selectedCoords.z);
         } else {
           this.world.addBlock(
             this.selectedCoords.x,
@@ -337,6 +339,8 @@ export class Player {
             this.selectedCoords.z,
             this.activeBlockId
           );
+          // Send block placement packet to sister
+          window.network?.sendBlockChange('add', this.selectedCoords.x, this.selectedCoords.y, this.selectedCoords.z, this.activeBlockId);
         }
 
         // If the tool isn't currently animating, trigger the animation

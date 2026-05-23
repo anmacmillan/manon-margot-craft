@@ -6,6 +6,7 @@ import { Player } from './player';
 import { Physics } from './physics';
 import { setupUI } from './ui';
 import { ModelLoader } from './modelLoader';
+import { NetworkManager } from './network';
 
 window.gameStarted = false;
 window.playerName = '';
@@ -54,6 +55,7 @@ renderer.setClearColor(0x80a0e0);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
+window.renderer = renderer; // Expose globally for multiplayer color updates
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -66,9 +68,13 @@ scene.add(world);
 const player = new Player(scene, world);
 const physics = new Physics(scene);
 
+// Initialize Peer-to-Peer Network Manager
+const network = new NetworkManager(scene, world, player);
+window.network = network; // Expose globally for player block placement hook
+
 // Initialize Launcher Card Listeners
 function initLauncher() {
-  const launchGame = (playerType) => {
+  const launchGame = (playerType, playMode = 'solo') => {
     window.playerName = playerType;
     window.gameStarted = true;
 
@@ -77,8 +83,7 @@ function initLauncher() {
 
     if (playerType === 'manon') {
       world.params.seed = 12345;
-      world.generate(true); // true to clear cache and rebuild!
-
+      
       // Warm, cozy pinkish sunset sky
       renderer.setClearColor(0xffccd5);
       scene.fog.color.setHex(0xffccd5);
@@ -98,7 +103,6 @@ function initLauncher() {
       }
     } else if (playerType === 'margot') {
       world.params.seed = 67890;
-      world.generate(true); // true to clear cache and rebuild!
 
       // Magical teal sea sky
       renderer.setClearColor(0x8be3db);
@@ -119,33 +123,59 @@ function initLauncher() {
       }
     }
 
-    // Fade out launcher portal
-    const portal = document.getElementById('launcher-portal');
-    if (portal) {
-      portal.classList.add('hidden');
-    }
+    // Network Mode Setup
+    if (playMode === 'host') {
+      world.generate(true); // Host clears cache & rebuilds fresh starting world
+      network.init('host', playerType);
+      
+      // Hide launcher portal and lock camera
+      const portal = document.getElementById('launcher-portal');
+      if (portal) portal.classList.add('hidden');
+      setTimeout(() => player.controls.lock(), 800);
 
-    // Automatically trigger pointer lock control after transition
-    setTimeout(() => {
-      player.controls.lock();
-    }, 800);
+    } else if (playMode === 'client') {
+      // Client DOES NOT generate local world yet.
+      // We wait for the 'sync' packet from the host, which will configure the seed and trigger generation.
+      network.init('client', playerType);
+
+    } else {
+      // Solo Mode
+      world.generate(true); // Clear cache & rebuild
+      
+      // Hide launcher portal and lock camera
+      const portal = document.getElementById('launcher-portal');
+      if (portal) portal.classList.add('hidden');
+      setTimeout(() => player.controls.lock(), 800);
+    }
   };
 
-  const manonBtn = document.getElementById('launch-manon');
-  if (manonBtn) {
-    manonBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      launchGame('manon');
-    });
-  }
+  // Bind Buttons: Manon
+  document.getElementById('launch-manon-solo')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    launchGame('manon', 'solo');
+  });
+  document.getElementById('launch-manon-host')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    launchGame('manon', 'host');
+  });
+  document.getElementById('launch-manon-join')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    launchGame('manon', 'client');
+  });
 
-  const margotBtn = document.getElementById('launch-margot');
-  if (margotBtn) {
-    margotBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      launchGame('margot');
-    });
-  }
+  // Bind Buttons: Margot
+  document.getElementById('launch-margot-solo')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    launchGame('margot', 'solo');
+  });
+  document.getElementById('launch-margot-host')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    launchGame('margot', 'host');
+  });
+  document.getElementById('launch-margot-join')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    launchGame('margot', 'client');
+  });
 }
 
 if (document.readyState === 'loading') {
@@ -213,7 +243,13 @@ function animate() {
     // Update positon of the orbit camera to track player 
     orbitCamera.position.copy(player.position).add(new THREE.Vector3(16, 16, 16));
     controls.target.copy(player.position);
+
+    // Send our real-time coordinates to our sister
+    network.sendPlayerPosition();
   }
+
+  // Animate and interpolate remote sister's avatar
+  network.update(dt);
 
   renderer.render(scene, player.controls.isLocked ? player.camera : orbitCamera);
   stats.update();

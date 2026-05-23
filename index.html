@@ -7,6 +7,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ManonCraft & MargotCraft</title>
   <link rel="stylesheet" href="./style.css">
+  <!-- Include PeerJS for seamless WebRTC Peer-to-Peer multiplayer -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
 </head>
 
 <body>
@@ -14,26 +16,35 @@
   <div id="launcher-portal">
     <div class="launcher-header">
       <div class="pixel-title">Manon & Margot Craft</div>
-      <p class="launcher-subtitle">Select your private sandbox world to begin!</p>
+      <p class="launcher-subtitle">Select your sandbox or play together in local co-op!</p>
     </div>
     <div class="launcher-cards">
-      <div class="launcher-card manon" id="launch-manon">
+      <div class="launcher-card manon">
         <div class="card-glow"></div>
         <div class="card-icon">🌸</div>
         <h2>ManonCraft</h2>
         <p>A cozy pastel sunset world. Build with soft pink horizons and beautiful golden sands.</p>
-        <button class="pixel-btn pink-btn">Play ManonCraft</button>
+        <div class="card-actions">
+          <button class="pixel-btn pink-btn" id="launch-manon-solo">Play Solo</button>
+          <button class="pixel-btn gold-btn" id="launch-manon-host">Host Co-op</button>
+          <button class="pixel-btn purple-btn" id="launch-manon-join">Join Margot</button>
+        </div>
       </div>
-      <div class="launcher-card margot" id="launch-margot">
+      <div class="launcher-card margot">
         <div class="card-glow"></div>
         <div class="card-icon">🌊</div>
         <h2>MargotCraft</h2>
         <p>A magical teal sea world. Build with vibrant oceans, deep forests, and sparkling blue skies.</p>
-        <button class="pixel-btn teal-btn">Play MargotCraft</button>
+        <div class="card-actions">
+          <button class="pixel-btn teal-btn" id="launch-margot-solo">Play Solo</button>
+          <button class="pixel-btn gold-btn" id="launch-margot-host">Host Co-op</button>
+          <button class="pixel-btn purple-btn" id="launch-margot-join">Join Manon</button>
+        </div>
       </div>
     </div>
+
     <div class="launcher-footer">
-      Private Sandboxes for Manon & Margot. Powered by Hostinger. Press 'U' to toggle settings.
+      Private Sandboxes for Manon & Margot. Serverless WebRTC co-op. Press 'U' to toggle settings.
     </div>
   </div>
 
@@ -61,7 +72,7 @@
       SHIFT - Sprint<br>
       SPACE - Jump<br>
       R - Reset Camera<br>
-      U - Toggle UI
+      U - Toggle UI<br>
       0 - Pickaxe<br>
       1-8 - Select Block<br>
       F1 - Save Game<br>
@@ -71,6 +82,9 @@
     </div>
   </div>
   <div id="status"></div>
+  <!-- Floating multiplayer banner -->
+  <div id="multiplayer-status" class="hidden">Connecting...</div>
+
   <script type="module" src="./scripts/main.js"></script>
 </body>
 
