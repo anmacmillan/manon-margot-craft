@@ -2,6 +2,22 @@ import * as THREE from 'three';
 import { WorldChunk } from './worldChunk';
 import { DataStore } from './dataStore';
 
+// Polyfill for requestIdleCallback to support Safari and older browsers
+if (typeof window !== 'undefined' && !window.requestIdleCallback) {
+  window.requestIdleCallback = function (cb) {
+    const start = performance.now();
+    return setTimeout(() => {
+      cb({
+        didTimeout: false,
+        timeRemaining: () => Math.max(0, 50 - (performance.now() - start))
+      });
+    }, 1);
+  };
+  window.cancelIdleCallback = function (id) {
+    clearTimeout(id);
+  };
+}
+
 export class World extends THREE.Group {
 
   /**
@@ -85,9 +101,13 @@ export class World extends THREE.Group {
     if (window.network && window.network.role === 'client') return;
 
     const playerSuffix = window.playerName || 'default';
-    localStorage.setItem(`minecraft_params_${playerSuffix}`, JSON.stringify(this.params));
-    localStorage.setItem(`minecraft_data_${playerSuffix}`, JSON.stringify(this.dataStore.data));
-    console.log(`Auto-Saved world state for: ${playerSuffix}`);
+    try {
+      localStorage.setItem(`minecraft_params_${playerSuffix}`, JSON.stringify(this.params));
+      localStorage.setItem(`minecraft_data_${playerSuffix}`, JSON.stringify(this.dataStore.data));
+      console.log(`Auto-Saved world state for: ${playerSuffix}`);
+    } catch (err) {
+      console.warn('LocalStorage save failed (e.g. storage full or private browsing):', err);
+    }
   }
 
   /**
@@ -96,26 +116,25 @@ export class World extends THREE.Group {
    */
   load() {
     const playerSuffix = window.playerName || 'default';
-    const savedParams = localStorage.getItem(`minecraft_params_${playerSuffix}`);
-    const savedData = localStorage.getItem(`minecraft_data_${playerSuffix}`);
-    if (savedParams && savedData) {
-      try {
+    try {
+      const savedParams = localStorage.getItem(`minecraft_params_${playerSuffix}`);
+      const savedData = localStorage.getItem(`minecraft_data_${playerSuffix}`);
+      if (savedParams && savedData) {
         this.params = JSON.parse(savedParams);
         this.dataStore.data = JSON.parse(savedData);
         document.getElementById('status').innerHTML = 'GAME LOADED';
         setTimeout(() => document.getElementById('status').innerHTML = '', 3000);
         this.generate();
         return true;
-      } catch (err) {
-        console.error('Error loading save game:', err);
-        document.getElementById('status').innerHTML = 'LOAD ERROR';
-        setTimeout(() => document.getElementById('status').innerHTML = '', 3000);
-        return false;
       }
-    } else {
-      console.log(`No save game found for player: ${playerSuffix}`);
+    } catch (err) {
+      console.error('Error loading save game:', err);
+      document.getElementById('status').innerHTML = 'LOAD ERROR';
+      setTimeout(() => document.getElementById('status').innerHTML = '', 3000);
       return false;
     }
+    console.log(`No save game found for player: ${playerSuffix}`);
+    return false;
   }
 
   /**
