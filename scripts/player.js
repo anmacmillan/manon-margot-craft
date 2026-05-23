@@ -82,6 +82,11 @@ export class Player {
     document.addEventListener('keyup', this.onKeyUp.bind(this));
     document.addEventListener('keydown', this.onKeyDown.bind(this));
     document.addEventListener('mousedown', this.onMouseDown.bind(this));
+
+    // Reset key presses on window blur to prevent stuck key issues (like infinite flying)
+    window.addEventListener('blur', () => {
+      this.keysPressed = {};
+    });
   }
 
   onCameraLock() {
@@ -339,6 +344,11 @@ export class Player {
    * @param {MouseEvent} event 
    */
   onMouseDown(event) {
+    if (!this.controls.isLocked) {
+      this.controls.lock();
+      return;
+    }
+
     if (this.controls.isLocked) {
       // Is a block selected?
       if (this.selectedCoords) {

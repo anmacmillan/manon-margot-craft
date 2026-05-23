@@ -140,12 +140,13 @@ function initLauncher() {
       // Hide launcher portal and lock camera
       const portal = document.getElementById('launcher-portal');
       if (portal) portal.classList.add('hidden');
-      setTimeout(() => player.controls.lock(), 800);
+      player.controls.lock();
 
     } else if (playMode === 'client') {
       // Client DOES NOT generate local world yet.
       // We wait for the 'sync' packet from the host, which will configure the seed and trigger generation.
       network.init('client', playerType);
+      player.controls.lock();
 
     } else {
       // Solo Mode - Auto-load previous world, generate fresh terrain only if no save file exists
@@ -157,7 +158,7 @@ function initLauncher() {
       // Hide launcher portal and lock camera
       const portal = document.getElementById('launcher-portal');
       if (portal) portal.classList.add('hidden');
-      setTimeout(() => player.controls.lock(), 800);
+      player.controls.lock();
     }
   };
 

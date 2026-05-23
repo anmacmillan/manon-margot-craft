@@ -196,9 +196,6 @@ export class NetworkManager {
         // Hide launcher and lock pointer controls
         const portal = document.getElementById('launcher-portal');
         if (portal) portal.classList.add('hidden');
-        setTimeout(() => {
-          this.player.controls.lock();
-        }, 500);
         break;
 
       case 'hello':
