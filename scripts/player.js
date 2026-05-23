@@ -42,6 +42,8 @@ export class Player {
 
   constructor(scene, world) {
     this.world = world;
+    this.gameMode = 'creative'; // Default to creative mode (God Mode)
+    this.keysPressed = {};      // Key state tracker for smooth flight and noclip movement
     this.position.set(32, 32, 32);
     this.cameraHelper.visible = false;
     scene.add(this.camera);
@@ -153,6 +155,18 @@ export class Player {
       this.velocity.z = this.input.z * (this.sprinting ? 1.5 : 1);
       this.controls.moveRight(this.velocity.x * dt);
       this.controls.moveForward(this.velocity.z * dt);
+
+      // Handle continuous Creative Flight
+      if (this.gameMode === 'creative') {
+        let flySpeed = this.maxSpeed * (this.sprinting ? 2.0 : 1.0);
+        this.velocity.y = 0; // Standard creative behavior: hover still unless input is held
+        if (this.keysPressed['Space']) {
+          this.velocity.y = flySpeed;
+        } else if (this.keysPressed['ShiftLeft'] || this.keysPressed['ShiftRight']) {
+          this.velocity.y = -flySpeed;
+        }
+      }
+
       this.position.y += this.velocity.y * dt;
 
       if (this.position.y < 0) {
@@ -232,6 +246,8 @@ export class Player {
   onKeyDown(event) {
     if (!window.gameStarted) return;
 
+    this.keysPressed[event.code] = true;
+
     if (!this.controls.isLocked) {
       this.debugCamera = false;
       this.controls.lock();
@@ -279,7 +295,8 @@ export class Player {
         this.sprinting = true;
         break;
       case 'Space':
-        if (this.onGround) {
+        // Only jump in Survival mode; Creative handles continuous vertical movement in applyInputs
+        if (this.gameMode !== 'creative' && this.onGround) {
           this.velocity.y += this.jumpSpeed;
         }
         break;
@@ -295,6 +312,8 @@ export class Player {
    * @param {KeyboardEvent} event 
    */
   onKeyUp(event) {
+    this.keysPressed[event.code] = false;
+
     switch (event.code) {
       case 'KeyW':
         this.input.z = 0;

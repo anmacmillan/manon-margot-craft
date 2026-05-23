@@ -38,7 +38,9 @@ export class Physics {
   update(dt, player, world) {
     this.accumulator += dt;
     while (this.accumulator >= this.stepSize) {
-      player.velocity.y -= this.gravity * this.stepSize;
+      if (player.gameMode !== 'creative') {
+        player.velocity.y -= this.gravity * this.stepSize;
+      }
       player.applyInputs(this.stepSize);
       this.detectCollisions(player, world);
       this.accumulator -= this.stepSize;

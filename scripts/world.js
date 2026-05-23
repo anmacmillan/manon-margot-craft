@@ -81,15 +81,18 @@ export class World extends THREE.Group {
    * Saves the world data to local storage
    */
   save() {
+    // Crucial Safety: visiting clients in multiplayer must not overwrite their own local sandboxes
+    if (window.network && window.network.role === 'client') return;
+
     const playerSuffix = window.playerName || 'default';
     localStorage.setItem(`minecraft_params_${playerSuffix}`, JSON.stringify(this.params));
     localStorage.setItem(`minecraft_data_${playerSuffix}`, JSON.stringify(this.dataStore.data));
-    document.getElementById('status').innerHTML = 'GAME SAVED';
-    setTimeout(() => document.getElementById('status').innerHTML = '', 3000);
+    console.log(`Auto-Saved world state for: ${playerSuffix}`);
   }
 
   /**
    * Loads the game from disk
+   * @returns {boolean} Whether loading succeeded
    */
   load() {
     const playerSuffix = window.playerName || 'default';
@@ -102,14 +105,16 @@ export class World extends THREE.Group {
         document.getElementById('status').innerHTML = 'GAME LOADED';
         setTimeout(() => document.getElementById('status').innerHTML = '', 3000);
         this.generate();
+        return true;
       } catch (err) {
         console.error('Error loading save game:', err);
         document.getElementById('status').innerHTML = 'LOAD ERROR';
         setTimeout(() => document.getElementById('status').innerHTML = '', 3000);
+        return false;
       }
     } else {
-      document.getElementById('status').innerHTML = 'NO SAVE FOUND';
-      setTimeout(() => document.getElementById('status').innerHTML = '', 3000);
+      console.log(`No save game found for player: ${playerSuffix}`);
+      return false;
     }
   }
 
@@ -337,6 +342,9 @@ export class World extends THREE.Group {
       this.hideBlock(x, y + 1, z);
       this.hideBlock(x, y, z - 1);
       this.hideBlock(x, y, z + 1);
+
+      // Trigger automatic background save
+      this.save();
     }
   }
 
@@ -367,6 +375,9 @@ export class World extends THREE.Group {
       this.revealBlock(x, y + 1, z);
       this.revealBlock(x, y, z - 1);
       this.revealBlock(x, y, z + 1);
+
+      // Trigger automatic background save
+      this.save();
     }
   }
 

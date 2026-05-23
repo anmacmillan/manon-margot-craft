@@ -126,12 +126,13 @@ export class NetworkManager {
 
       if (this.isHost) {
         statusEl.innerHTML = `<span style="color:#8be3db;">Sister Connected! Syncing world...</span>`;
-        // Send world seed and modified block dataStore to client
+        // Send world seed, modified block dataStore, and current game mode to client
         this.conn.send({
           type: 'sync',
           seed: this.world.params.seed,
           blockData: this.world.dataStore.data,
-          hostName: this.playerName
+          hostName: this.playerName,
+          gameMode: this.player.gameMode
         });
 
         this.spawnRemoteAvatar(this.sisterName);
@@ -179,6 +180,7 @@ export class NetworkManager {
         console.log(`Sync packet received! Seed: ${data.seed}`);
         this.world.params.seed = data.seed;
         this.world.dataStore.data = data.blockData || {};
+        this.player.gameMode = data.gameMode || 'creative'; // Apply host's game mode to client
         
         // Match the background, fog, and instructions theme of the host
         this.applyHostTheme(data.hostName);

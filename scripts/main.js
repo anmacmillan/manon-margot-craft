@@ -81,6 +81,11 @@ function initLauncher() {
     // Play retro chime sound
     playStartSound();
 
+    // Configure selected Game Mode (Creative vs Survival)
+    const selectedMode = document.getElementById(`mode-${playerType}`)?.value || 'creative';
+    player.gameMode = selectedMode;
+    console.log(`Launching ${playerType.toUpperCase()} in ${selectedMode.toUpperCase()} mode.`);
+
     if (playerType === 'manon') {
       world.params.seed = 12345;
       
@@ -97,7 +102,7 @@ function initLauncher() {
       // Customize instructions overlay
       const title = document.querySelector('#instructions h1');
       if (title) {
-        title.innerText = 'MANONCRAFT';
+        title.innerText = selectedMode === 'creative' ? 'MANONCRAFT (CREATIVE)' : 'MANONCRAFT (SURVIVAL)';
         title.style.color = '#ff4d94';
         title.style.textShadow = '3px 3px 0px #800040';
       }
@@ -117,7 +122,7 @@ function initLauncher() {
       // Customize instructions overlay
       const title = document.querySelector('#instructions h1');
       if (title) {
-        title.innerText = 'MARGOTCRAFT';
+        title.innerText = selectedMode === 'creative' ? 'MARGOTCRAFT (CREATIVE)' : 'MARGOTCRAFT (SURVIVAL)';
         title.style.color = '#00cccc';
         title.style.textShadow = '3px 3px 0px #004d40';
       }
@@ -125,7 +130,11 @@ function initLauncher() {
 
     // Network Mode Setup
     if (playMode === 'host') {
-      world.generate(true); // Host clears cache & rebuilds fresh starting world
+      // Auto-load host's previous world, generate fresh terrain only if no save file exists
+      const loaded = world.load();
+      if (!loaded) {
+        world.generate(true); 
+      }
       network.init('host', playerType);
       
       // Hide launcher portal and lock camera
@@ -139,8 +148,11 @@ function initLauncher() {
       network.init('client', playerType);
 
     } else {
-      // Solo Mode
-      world.generate(true); // Clear cache & rebuild
+      // Solo Mode - Auto-load previous world, generate fresh terrain only if no save file exists
+      const loaded = world.load();
+      if (!loaded) {
+        world.generate(true);
+      }
       
       // Hide launcher portal and lock camera
       const portal = document.getElementById('launcher-portal');
