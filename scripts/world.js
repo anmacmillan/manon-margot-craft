@@ -299,15 +299,19 @@ export class World extends THREE.Group {
    * }}
    */
   worldToChunkCoords(x, y, z) {
+    const rx = Math.round(x);
+    const ry = Math.round(y);
+    const rz = Math.round(z);
+
     const chunkCoords = {
-      x: Math.floor(x / this.chunkSize.width),
-      z: Math.floor(z / this.chunkSize.width)
+      x: Math.floor(rx / this.chunkSize.width),
+      z: Math.floor(rz / this.chunkSize.width)
     };
 
     const blockCoords = {
-      x: x - this.chunkSize.width * chunkCoords.x,
-      y,
-      z: z - this.chunkSize.width * chunkCoords.z
+      x: rx - this.chunkSize.width * chunkCoords.x,
+      y: ry,
+      z: rz - this.chunkSize.width * chunkCoords.z
     };
 
     return {
@@ -618,6 +622,226 @@ export class World extends THREE.Group {
           tempQueue.push({ action: 'add', x: originX + dx, y: originY + 1, z: originZ + dz, blockId: 8 });
         }
       }
+    } else if (type === 'gothic-cathedral') {
+      //⛪ Gothic Cathedral (Spire + Altar + Nave)
+      const width = 6;
+      const length = 12;
+      const wallHeight = 5;
+
+      // 1. Stone Foundation
+      for (let dx = -width; dx <= width; dx++) {
+        for (let dz = -length; dz <= length; dz++) {
+          tempQueue.push({ action: 'add', x: originX + dx, y: originY, z: originZ + dz, blockId: 3 }); // Stone Floor
+        }
+      }
+
+      // 2. Pillars and Stained-Glass Walls (Iron Ore/Glass pattern)
+      for (let dz = -length; dz <= length; dz++) {
+        // Left and Right walls
+        for (const dx of [-width, width]) {
+          // Columns every 3 blocks
+          const isColumn = (dz % 3 === 0);
+          for (let dy = 1; dy <= wallHeight; dy++) {
+            if (isColumn) {
+              tempQueue.push({ action: 'add', x: originX + dx, y: originY + dy, z: originZ + dz, blockId: 4 }); // Coal (Black Pillars)
+            } else if (dy === 2 || dy === 3) {
+              tempQueue.push({ action: 'add', x: originX + dx, y: originY + dy, z: originZ + dz, blockId: 5 }); // Iron Ore (Glowing Red glass)
+            } else {
+              tempQueue.push({ action: 'add', x: originX + dx, y: originY + dy, z: originZ + dz, blockId: 3 }); // Stone wall
+            }
+          }
+        }
+      }
+
+      // 3. Arched Ceiling (Ribbed Vaults)
+      for (let dz = -length; dz <= length; dz++) {
+        for (let dx = -width; dx <= width; dx++) {
+          const dist = Math.abs(dx);
+          const archY = wallHeight + Math.round((width - dist) * 0.6);
+          // Only build arch ceiling
+          const blockId = (dz % 3 === 0) ? 4 : 3; // Ribbed patterns in vault
+          tempQueue.push({ action: 'add', x: originX + dx, y: originY + archY, z: originZ + dz, blockId });
+        }
+      }
+
+      // 4. Central Tower / Cathedral Spire at the back (z = -length)
+      const spireBaseY = wallHeight + width;
+      const spireHeight = 12;
+      for (let dy = 1; dy <= spireHeight; dy++) {
+        const radius = Math.max(1, Math.round(3 - dy * 0.25));
+        for (let dx = -radius; dx <= radius; dx++) {
+          for (let dz = -radius; dz <= radius; dz++) {
+            const boundary = (Math.abs(dx) === radius || Math.abs(dz) === radius);
+            if (boundary) {
+              tempQueue.push({ action: 'add', x: originX + dx, y: originY + spireBaseY + dy, z: originZ - length + dz, blockId: 4 }); // Coal Ore Spire shell
+            }
+          }
+        }
+      }
+      
+      // Golden Cross at the top of Spire
+      tempQueue.push({ action: 'add', x: originX, y: originY + spireBaseY + spireHeight + 1, z: originZ - length, blockId: 8 }); // Sand (Gold) Cross
+      tempQueue.push({ action: 'add', x: originX, y: originY + spireBaseY + spireHeight + 2, z: originZ - length, blockId: 8 });
+      tempQueue.push({ action: 'add', x: originX, y: originY + spireBaseY + spireHeight + 3, z: originZ - length, blockId: 8 });
+      tempQueue.push({ action: 'add', x: originX - 1, y: originY + spireBaseY + spireHeight + 2, z: originZ - length, blockId: 8 });
+      tempQueue.push({ action: 'add', x: originX + 1, y: originY + spireBaseY + spireHeight + 2, z: originZ - length, blockId: 8 });
+
+      // 5. Altar inside (at the back)
+      for (let dx = -2; dx <= 2; dx++) {
+        tempQueue.push({ action: 'add', x: originX + dx, y: originY + 1, z: originZ - length + 3, blockId: 10 }); // Snow Altar table
+      }
+
+    } else if (type === 'pegasus-stables') {
+      //🦄 Magical Pegasus Barn & Ponies Stables
+      const size = 5; // 11x11 stables
+      const height = 4;
+
+      // 1. Gold Dust Floor (Sand)
+      for (let dx = -size; dx <= size; dx++) {
+        for (let dz = -size; dz <= size; dz++) {
+          tempQueue.push({ action: 'add', x: originX + dx, y: originY, z: originZ + dz, blockId: 8 }); // Sand
+        }
+      }
+
+      // 2. Corner Wood Posts & Stable Walls (Oak wood + Fences)
+      for (const cx of [-size, size]) {
+        for (const cz of [-size, size]) {
+          for (let dy = 1; dy <= height; dy++) {
+            tempQueue.push({ action: 'add', x: originX + cx, y: originY + dy, z: originZ + cz, blockId: 6 }); // Tree Log pillars
+          }
+        }
+      }
+
+      // Side stable partitions
+      for (let dz = -size + 1; dz <= size - 1; dz++) {
+        if (dz !== 0) {
+          tempQueue.push({ action: 'add', x: originX - size, y: originY + 1, z: originZ + dz, blockId: 3 }); // stone fence
+          tempQueue.push({ action: 'add', x: originX + size, y: originY + 1, z: originZ + dz, blockId: 3 });
+        }
+      }
+
+      // 3. Cozy Cloud Beds / Fluffy partitions
+      for (let dx = -size + 2; dx <= size - 2; dx += 4) {
+        for (let dz = -size + 1; dz <= size - 1; dz++) {
+          if (Math.abs(dz) === 2) {
+            tempQueue.push({ action: 'add', x: originX + dx, y: originY + 1, z: originZ + dz, blockId: 9 }); // Fluffy Cloud block beds
+            tempQueue.push({ action: 'add', x: originX + dx, y: originY + 1, z: originZ + dz + 1, blockId: 9 });
+          }
+        }
+      }
+
+      // 4. Grand Canopy Roof (Pink Flowery Leaves)
+      for (let dy = 0; dy <= 3; dy++) {
+        const roofSize = size - dy;
+        for (let dx = -roofSize; dx <= roofSize; dx++) {
+          for (let dz = -roofSize; dz <= roofSize; dz++) {
+            const isBorder = (Math.abs(dx) === roofSize || Math.abs(dz) === roofSize);
+            if (isBorder || dy === 3) {
+              tempQueue.push({ action: 'add', x: originX + dx, y: originY + height + dy, z: originZ + dz, blockId: 7 }); // Pink Leaves
+            }
+          }
+        }
+      }
+
+    } else if (type === 'rainbow-bridge') {
+      //🌈 Parabolic Curved Rainbow Bridge
+      const halfLength = 10;
+      const width = 3;
+
+      for (let dx = -halfLength; dx <= halfLength; dx++) {
+        // Calculate parabolic height: peak is at dx = 0 with height 5
+        const archY = Math.max(0, Math.round(6 - (dx * dx) / 18));
+        
+        // Base cloud footings at the two ends of the bridge
+        if (Math.abs(dx) === halfLength) {
+          for (let dy = 1; dy <= 2; dy++) {
+            for (let dz = -1; dz <= 1; dz++) {
+              tempQueue.push({ action: 'add', x: originX + dx, y: originY + dy, z: originZ + dz, blockId: 9 }); // Cloud pillars
+            }
+          }
+        }
+
+        // Rainbow Lanes: Left = Leaves (Pink), Middle = Sand (Gold), Right = Iron (Red)
+        for (let dz = -1; dz <= 1; dz++) {
+          let blockId;
+          if (dz === -1) {
+            blockId = 7; // Pink Leaves
+          } else if (dz === 0) {
+            blockId = 8; // Gold Sand
+          } else {
+            blockId = 5; // Glowing Iron Ore
+          }
+
+          tempQueue.push({ action: 'add', x: originX + dx, y: originY + archY, z: originZ + dz, blockId });
+          
+          // Add sparkling cloud accents underneath the arch center
+          if (Math.abs(dx) <= 3 && archY > 0) {
+            tempQueue.push({ action: 'add', x: originX + dx, y: originY + archY - 1, z: originZ + dz, blockId: 9 }); // Cloud underlay
+          }
+        }
+      }
+    } else if (type === 'greek-temple') {
+      // 🏛 Greek Temple (Snow/Quartz marble columns + stepped pediment roof + golden altar)
+      const w = 5; // Width radius (11 blocks wide)
+      const l = 7; // Length radius (15 blocks long)
+      const pillarH = 5; // Column height
+
+      // 1. Double-stepped Stone/Quartz platform
+      for (let dx = -w - 1; dx <= w + 1; dx++) {
+        for (let dz = -l - 1; dz <= l + 1; dz++) {
+          tempQueue.push({ action: 'add', x: originX + dx, y: originY, z: originZ + dz, blockId: 10 }); // Snow (Lower step)
+        }
+      }
+      for (let dx = -w; dx <= w; dx++) {
+        for (let dz = -l; dz <= l; dz++) {
+          tempQueue.push({ action: 'add', x: originX + dx, y: originY + 1, z: originZ + dz, blockId: 10 }); // Snow (Upper floor)
+        }
+      }
+
+      // 2. Classical Column Pillars (Pillars placed every 2 blocks along the border)
+      // Left and Right borders
+      for (const dx of [-w, w]) {
+        for (let dz = -l; dz <= l; dz += 2) {
+          for (let dy = 2; dy <= 2 + pillarH - 1; dy++) {
+            tempQueue.push({ action: 'add', x: originX + dx, y: originY + dy, z: originZ + dz, blockId: 10 }); // Marble Columns
+          }
+        }
+      }
+      // Front and Back borders
+      for (const dz of [-l, l]) {
+        for (let dx = -w + 2; dx <= w - 2; dx += 2) {
+          for (let dy = 2; dy <= 2 + pillarH - 1; dy++) {
+            tempQueue.push({ action: 'add', x: originX + dx, y: originY + dy, z: originZ + dz, blockId: 10 }); // Marble Columns
+          }
+        }
+      }
+
+      // 3. Flat Architrave / Ceiling Beam
+      const ceilY = 2 + pillarH;
+      for (let dx = -w; dx <= w; dx++) {
+        for (let dz = -l; dz <= l; dz++) {
+          if (Math.abs(dx) === w || Math.abs(dz) === l) {
+            tempQueue.push({ action: 'add', x: originX + dx, y: originY + ceilY, z: originZ + dz, blockId: 10 }); // Architrave
+          }
+        }
+      }
+
+      // 4. Stepped Pitched Roof (Pediment)
+      // dy goes from 0 to 5 blocks higher than the ceiling
+      for (let dy = 0; dy <= w; dy++) {
+        const span = w - dy;
+        for (let dx = -span; dx <= span; dx++) {
+          for (let dz = -l; dz <= l; dz++) {
+            tempQueue.push({ action: 'add', x: originX + dx, y: originY + ceilY + 1 + dy, z: originZ + dz, blockId: 10 });
+          }
+        }
+      }
+
+      // 5. Golden Statue / Shrine in Center-Back
+      tempQueue.push({ action: 'add', x: originX, y: originY + 2, z: originZ - l + 3, blockId: 9 }); // Cloud
+      tempQueue.push({ action: 'add', x: originX - 1, y: originY + 2, z: originZ - l + 3, blockId: 10 }); // Side marble
+      tempQueue.push({ action: 'add', x: originX + 1, y: originY + 2, z: originZ - l + 3, blockId: 10 }); // Side marble
+      tempQueue.push({ action: 'add', x: originX, y: originY + 3, z: originZ - l + 3, blockId: 8 }); // Golden sand block
     }
 
     // Append to existing building queue

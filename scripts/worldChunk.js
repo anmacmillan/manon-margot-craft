@@ -333,8 +333,11 @@ export class WorldChunk extends THREE.Group {
   * @returns {{id: number, instanceId: number}}
   */
   getBlock(x, y, z) {
-    if (this.inBounds(x, y, z)) {
-      return this.data[x][y][z];
+    const rx = Math.round(x);
+    const ry = Math.round(y);
+    const rz = Math.round(z);
+    if (this.inBounds(rx, ry, rz)) {
+      return this.data[rx][ry][rz];
     } else {
       return null;
     }
@@ -383,7 +386,11 @@ export class WorldChunk extends THREE.Group {
     if (block.id === blocks.empty.id || block.instanceId === null) return;
 
     // Get the mesh and instance id of the block
-    const mesh = this.children.find((instanceMesh) => instanceMesh.name === block.id);
+    const mesh = this.children.find((instanceMesh) => Number(instanceMesh.name) === Number(block.id));
+    if (!mesh) {
+      console.warn(`[WorldChunk] No instanced mesh found for block id ${block.id} in deleteBlockInstance`);
+      return;
+    }
     const instanceId = block.instanceId;
 
     // Swapping the transformation matrix of the block in the last position
@@ -423,7 +430,11 @@ export class WorldChunk extends THREE.Group {
     // Verify the block exists, it isn't an empty block type, and it doesn't already have an instance
     if (block && block.id !== blocks.empty.id && block.instanceId === null) {
       // Get the mesh and instance id of the block
-      const mesh = this.children.find((instanceMesh) => instanceMesh.name === block.id);
+      const mesh = this.children.find((instanceMesh) => Number(instanceMesh.name) === Number(block.id));
+      if (!mesh) {
+        console.warn(`[WorldChunk] No instanced mesh found for block id ${block.id} in addBlockInstance`);
+        return;
+      }
       const instanceId = mesh.count++;
       this.setBlockInstanceId(x, y, z, instanceId);
 
@@ -444,8 +455,11 @@ export class WorldChunk extends THREE.Group {
     * @param {number} id
     */
   setBlockId(x, y, z, id) {
-    if (this.inBounds(x, y, z)) {
-      this.data[x][y][z].id = id;
+    const rx = Math.round(x);
+    const ry = Math.round(y);
+    const rz = Math.round(z);
+    if (this.inBounds(rx, ry, rz)) {
+      this.data[rx][ry][rz].id = id;
     }
   }
 
@@ -458,8 +472,11 @@ export class WorldChunk extends THREE.Group {
     * @param {number} instanceId
     */
   setBlockInstanceId(x, y, z, instanceId) {
-    if (this.inBounds(x, y, z)) {
-      this.data[x][y][z].instanceId = instanceId;
+    const rx = Math.round(x);
+    const ry = Math.round(y);
+    const rz = Math.round(z);
+    if (this.inBounds(rx, ry, rz)) {
+      this.data[rx][ry][rz].instanceId = instanceId;
     }
   }
 
@@ -471,9 +488,12 @@ export class WorldChunk extends THREE.Group {
     * @returns {boolean}
     */
   inBounds(x, y, z) {
-    if (x >= 0 && x < this.size.width &&
-      y >= 0 && y < this.size.height &&
-      z >= 0 && z < this.size.width) {
+    const rx = Math.round(x);
+    const ry = Math.round(y);
+    const rz = Math.round(z);
+    if (rx >= 0 && rx < this.size.width &&
+      ry >= 0 && ry < this.size.height &&
+      rz >= 0 && rz < this.size.width) {
       return true;
     } else {
       return false;

@@ -7,6 +7,8 @@ import { Physics } from './physics';
 import { setupUI } from './ui';
 import { ModelLoader } from './modelLoader';
 import { NetworkManager } from './network';
+import { AvatarEditor } from './avatarEditor.js';
+
 
 window.gameStarted = false;
 window.playerName = '';
@@ -78,13 +80,27 @@ function initLauncher() {
     window.playerName = playerType;
     window.gameStarted = true;
 
+    // Ensure any open avatar editor drawer is destroyed cleanly and instantly
+    if (window.currentAvatarEditor) {
+      window.currentAvatarEditor.close(true);
+      window.currentAvatarEditor = null;
+    }
+
     // Play retro chime sound
     playStartSound();
 
     // Configure selected Outfit / Skin customization
-    const selectedSkin = document.getElementById(`skin-${playerType}`)?.value || 'standard';
+    let selectedSkin = 'standard';
+    const savedSkin = localStorage.getItem(`minecraft_avatar_${playerType}`);
+    if (savedSkin) {
+      try {
+        selectedSkin = JSON.parse(savedSkin);
+      } catch (e) {
+        selectedSkin = 'standard';
+      }
+    }
     player.avatarSkin = selectedSkin;
-    console.log(`Initializing local avatar for ${playerType} with skin ${selectedSkin}`);
+    console.log(`Initializing local avatar for ${playerType} with skin`, selectedSkin);
     player.initAvatar(playerType, selectedSkin);
 
     // Reveal floating magic structures spawner panel
@@ -146,9 +162,10 @@ function initLauncher() {
           SPACE - Fly Up<br>
           SHIFT / C / CTRL - Fly Down<br>
           R - Reset Camera<br>
+          M - Free/Lock Mouse (Trackpad Unlock)<br>
           U - Toggle UI<br>
-          0 - Pickaxe<br>
-          1-8 - Select Block<br>
+          0 / à / ² / P / X - Pickaxe (No Shift!)<br>
+          1-8 / & to _ - Select Block (Unshifted AZERTY)<br>
           F1 - Save Game<br>
           F2 - Load Game<br>
           F10 - Debug Camera<br><br>
@@ -159,9 +176,10 @@ function initLauncher() {
           SHIFT - Sprint<br>
           SPACE - Jump<br>
           R - Reset Camera<br>
+          M - Free/Lock Mouse (Trackpad Unlock)<br>
           U - Toggle UI<br>
-          0 - Pickaxe<br>
-          1-8 - Select Block<br>
+          0 / à / ² / P / X - Pickaxe (No Shift!)<br>
+          1-8 / & to _ - Select Block (Unshifted AZERTY)<br>
           F1 - Save Game<br>
           F2 - Load Game<br>
           F10 - Debug Camera<br><br>
@@ -198,7 +216,27 @@ function initLauncher() {
       const portal = document.getElementById('launcher-portal');
       if (portal) portal.classList.add('hidden');
     }
+
+    // Elegant auto-pointerlock transition on game launch!
+    player.controls.lock();
   };
+
+  // Bind Edit Avatar Buttons
+  document.getElementById('custom-manon-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.currentAvatarEditor = new AvatarEditor('manon', (settings) => {
+      console.log('Manon customized avatar settings saved:', settings);
+      launchGame('manon', 'solo');
+    });
+  });
+
+  document.getElementById('custom-margot-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.currentAvatarEditor = new AvatarEditor('margot', (settings) => {
+      console.log('Margot customized avatar settings saved:', settings);
+      launchGame('margot', 'solo');
+    });
+  });
 
   // Bind Buttons: Manon
   document.getElementById('launch-manon-solo')?.addEventListener('click', (e) => {
@@ -252,6 +290,10 @@ function initLauncher() {
   bindSpawnerBtn('spawn-gothic-castle', 'gothic-castle');
   bindSpawnerBtn('spawn-crystal-palace', 'crystal-palace');
   bindSpawnerBtn('spawn-cosmic-galaxy', 'cosmic-galaxy');
+  bindSpawnerBtn('spawn-gothic-cathedral', 'gothic-cathedral');
+  bindSpawnerBtn('spawn-pegasus-stables', 'pegasus-stables');
+  bindSpawnerBtn('spawn-rainbow-bridge', 'rainbow-bridge');
+  bindSpawnerBtn('spawn-greek-temple', 'greek-temple');
 }
 
 if (document.readyState === 'loading') {

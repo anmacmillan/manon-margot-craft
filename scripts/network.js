@@ -124,6 +124,7 @@ export class NetworkManager {
     this.conn.on('open', () => {
       this.isConnected = true;
       console.log('WebRTC P2P Data Channel Opened successfully!');
+      document.getElementById('teleport-btn')?.classList.remove('hidden');
 
       if (this.isHost) {
         statusEl.innerHTML = `<span style="color:#8be3db;">Sister Connected! Syncing world...</span>`;
@@ -258,6 +259,7 @@ export class NetworkManager {
     this.isConnected = false;
     const statusEl = document.getElementById('multiplayer-status');
     statusEl.innerHTML = `<span style="color:#ff4d4d;">Co-op Connection Lost!</span>`;
+    document.getElementById('teleport-btn')?.classList.add('hidden');
     
     // Remove remote avatar from scene
     if (this.remoteAvatar) {

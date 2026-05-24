@@ -13,77 +13,121 @@ export function buildAvatar(name, skin) {
   let skinColor = '#ffdbac';
   let pantsColor = '#3a4e93';
   let shoeColor = '#241a0f';
+  let accessoryType = 'none';
+  let faceStyle = 'standard';
 
-  if (name === 'manon') {
-    if (skin === 'gothic') {
-      hairColor = '#1a0d2e';  // Deep black purple
-      shirtColor = '#121212';  // Gothic black gown
-      skinColor = '#f5f5f7';   // Porcelain pale
-      pantsColor = '#222222';  // Dark charcoal
-      shoeColor = '#000000';
-    } else if (skin === 'galaxy') {
-      hairColor = '#d3a4ff';  // Celestial lavender-indigo
-      shirtColor = '#1d0c42';  // Deep nebula purple
-      skinColor = '#e3d8f8';   // Cosmic pale
-      pantsColor = '#0b0424';  // Starry abyss dark blue
-      shoeColor = '#ffb3ff';   // Starry pink
-    } else {
-      // Standard Manon
-      hairColor = '#5c3a21';
-      shirtColor = '#ff66b2';
-      skinColor = '#ffdbac';
-      pantsColor = '#3a4e93';
-    }
-  } else {
-    // Margot
-    if (skin === 'princess') {
-      hairColor = '#ff80b3';  // Strawberry pink
-      shirtColor = '#ff3385';  // Vibrant princess pink
-      skinColor = '#ffe6ea';   // Rosy blush skin
-      pantsColor = '#ff99c8';  // Light pastel pink skirt
-      shoeColor = '#ffd700';   // Golden shoes
-    } else if (skin === 'mermaid') {
-      hairColor = '#40e0d0';  // Aquamarine sea-foam
-      shirtColor = '#008080';  // Sparkling teal mermaid tail/top
-      skinColor = '#ffe0cc';   // Sun-kissed fair skin
-      pantsColor = '#20b2aa';  // Ocean scales light-teal
-      shoeColor = '#ffa500';   // Starfish orange shoes
-    } else {
-      // Standard Margot
-      hairColor = '#fce181';  // Blonde
-      shirtColor = '#00cccc';  // Teal
-      skinColor = '#ffdbac';
-      pantsColor = '#3a4e93';
+  // Handle stringified JSON skin objects
+  let skinObj = skin;
+  if (typeof skin === 'string' && skin.trim().startsWith('{')) {
+    try {
+      skinObj = JSON.parse(skin);
+    } catch (e) {
+      console.error("Error parsing skin JSON in buildAvatar:", e);
     }
   }
 
-  // --- 2. PIXELATED CANVAS TEXTURE GENERATOR ---
+  if (skinObj && typeof skinObj === 'object') {
+    // Custom Avatar Settings!
+    hairColor = skinObj.hairColor || hairColor;
+    shirtColor = skinObj.shirtColor || shirtColor;
+    skinColor = skinObj.skinColor || skinColor;
+    pantsColor = skinObj.pantsColor || pantsColor;
+    shoeColor = skinObj.shoeColor || shoeColor;
+    accessoryType = skinObj.accessory || 'none';
+    faceStyle = skinObj.eyes || 'standard';
+  } else {
+    // Presets
+    if (name === 'manon') {
+      if (skinObj === 'gothic') {
+        hairColor = '#1a0d2e';  // Deep black purple
+        shirtColor = '#121212';  // Gothic black gown
+        skinColor = '#f5f5f7';   // Porcelain pale
+        pantsColor = '#222222';  // Dark charcoal
+        shoeColor = '#000000';
+        accessoryType = 'wings';
+        faceStyle = 'gothic';
+      } else if (skinObj === 'galaxy') {
+        hairColor = '#d3a4ff';  // Celestial lavender-indigo
+        shirtColor = '#1d0c42';  // Deep nebula purple
+        skinColor = '#e3d8f8';   // Cosmic pale
+        pantsColor = '#0b0424';  // Starry abyss dark blue
+        shoeColor = '#ffb3ff';   // Starry pink
+        accessoryType = 'hat';
+        faceStyle = 'galaxy';
+      } else {
+        // Standard Manon
+        hairColor = '#5c3a21';
+        shirtColor = '#ff66b2';
+        skinColor = '#ffdbac';
+        pantsColor = '#3a4e93';
+        shoeColor = '#241a0f';
+        accessoryType = 'none';
+        faceStyle = 'standard';
+      }
+    } else {
+      // Margot
+      if (skinObj === 'princess') {
+        hairColor = '#ff80b3';  // Strawberry pink
+        shirtColor = '#ff3385';  // Vibrant princess pink
+        skinColor = '#ffe6ea';   // Rosy blush skin
+        pantsColor = '#ff99c8';  // Light pastel pink skirt
+        shoeColor = '#ffd700';   // Golden shoes
+        accessoryType = 'crown';
+        faceStyle = 'princess';
+      } else if (skinObj === 'mermaid') {
+        hairColor = '#40e0d0';  // Aquamarine sea-foam
+        shirtColor = '#008080';  // Sparkling teal mermaid tail/top
+        skinColor = '#ffe0cc';   // Sun-kissed fair skin
+        pantsColor = '#20b2aa';  // Ocean scales light-teal
+        shoeColor = '#ffa500';   // Starfish orange shoes
+        accessoryType = 'starfish';
+        faceStyle = 'mermaid';
+      } else {
+        // Standard Margot
+        hairColor = '#fce181';  // Blonde
+        shirtColor = '#00cccc';  // Teal
+        skinColor = '#ffdbac';
+        pantsColor = '#3a4e93';
+        shoeColor = '#241a0f';
+        accessoryType = 'none';
+        faceStyle = 'standard';
+      }
+    }
+  }
+
+  // --- 2. PIXELATED CANVAS TEXTURE GENERATOR WITH HSL SHADING NOISE ---
   const createPixelMaterial = (baseColor, options = {}) => {
     const canvas = document.createElement('canvas');
     canvas.width = 32;
     canvas.height = 32;
     const ctx = canvas.getContext('2d');
     
-    // Draw base color
-    ctx.fillStyle = baseColor;
-    ctx.fillRect(0, 0, 32, 32);
-
-    // Apply texture noise for retro feel
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-    for (let i = 0; i < 32; i += 4) {
-      for (let j = 0; j < 32; j += 4) {
-        if ((i + j) % 8 === 0) {
-          ctx.fillRect(i, j, 4, 4);
+    // Helper to draw shaded noise block of a given hex color
+    const fillNoiseBlock = (xStart, yStart, width, height, hexColor) => {
+      const blockCol = new THREE.Color(hexColor);
+      const blockHsl = { h: 0, s: 0, l: 0 };
+      blockCol.getHSL(blockHsl);
+      
+      for (let x = xStart; x < xStart + width; x += 4) {
+        for (let y = yStart; y < yStart + height; y += 4) {
+          const lNoise = (Math.random() - 0.5) * 0.12; // +/- 6% Lightness variation
+          const finalL = Math.max(0.02, Math.min(0.98, blockHsl.l + lNoise));
+          const pixelCol = new THREE.Color().setHSL(blockHsl.h, blockHsl.s, finalL);
+          ctx.fillStyle = '#' + pixelCol.getHexString();
+          ctx.fillRect(x, y, 4, 4);
         }
       }
-    }
+    };
+
+    // Draw base shaded noise background
+    fillNoiseBlock(0, 0, 32, 32, baseColor);
 
     const { type, side } = options;
 
     if (type === 'head') {
       if (side === 'front') {
         // Draw eyes
-        if (skin === 'gothic') {
+        if (skinObj === 'gothic' || faceStyle === 'gothic') {
           // Dark purple goth makeup eyes
           ctx.fillStyle = '#4a0e4e';
           ctx.fillRect(6, 10, 8, 8); // eye area shadow left
@@ -102,7 +146,7 @@ export function buildAvatar(name, skin) {
           // Choker around neck
           ctx.fillStyle = '#000000';
           ctx.fillRect(0, 28, 32, 4);
-        } else if (skin === 'galaxy') {
+        } else if (skinObj === 'galaxy' || faceStyle === 'galaxy') {
           // Galaxy eyes (neon yellow/gold glowing star eyes)
           ctx.fillStyle = '#ff00ff'; // neon magenta shadow
           ctx.fillRect(6, 11, 8, 6);
@@ -117,7 +161,7 @@ export function buildAvatar(name, skin) {
           // Small magical cute smile
           ctx.fillStyle = '#ff66cc';
           ctx.fillRect(14, 22, 4, 2);
-        } else if (skin === 'princess') {
+        } else if (skinObj === 'princess' || faceStyle === 'princess') {
           // Sweet anime princess blue eyes
           ctx.fillStyle = '#40e0d0'; // Aqua shadow
           ctx.fillRect(6, 12, 8, 4);
@@ -137,7 +181,7 @@ export function buildAvatar(name, skin) {
           // Tiny princess smile
           ctx.fillStyle = '#ff3366';
           ctx.fillRect(13, 21, 6, 3);
-        } else if (skin === 'mermaid') {
+        } else if (skinObj === 'mermaid' || faceStyle === 'mermaid') {
           // Sea blue green star eyes
           ctx.fillStyle = '#1e5a5a';
           ctx.fillRect(8, 12, 4, 4);
@@ -157,6 +201,39 @@ export function buildAvatar(name, skin) {
           // Shell pink mouth
           ctx.fillStyle = '#e9967a';
           ctx.fillRect(13, 22, 6, 2);
+        } else if (skinObj === 'wizard' || faceStyle === 'wizard') {
+          // Wizard Glasses & Red Lightning Bolt Scar
+          // 1. Draw Emerald Green eyes
+          ctx.fillStyle = '#00aa50'; // emerald green iris
+          ctx.fillRect(8, 12, 4, 4);
+          ctx.fillRect(20, 12, 4, 4);
+          ctx.fillStyle = '#ffffff'; // glare
+          ctx.fillRect(8, 12, 2, 2);
+          ctx.fillRect(20, 12, 2, 2);
+
+          // 2. Draw black round glasses
+          ctx.strokeStyle = '#111111';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(10, 14, 4, 0, 2 * Math.PI);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(22, 14, 4, 0, 2 * Math.PI);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(14, 14);
+          ctx.lineTo(18, 14);
+          ctx.stroke();
+
+          // 3. Draw red lightning bolt scar on upper forehead
+          ctx.fillStyle = '#ff1111'; // Bright scarlet red lightning
+          ctx.fillRect(13, 2, 2, 3);
+          ctx.fillRect(11, 4, 3, 2);
+          ctx.fillRect(11, 5, 2, 4);
+
+          // 4. Little content smile
+          ctx.fillStyle = '#d35252';
+          ctx.fillRect(14, 22, 4, 2);
         } else {
           // Standard face
           ctx.fillStyle = '#1e3c72'; // Blue eyes
@@ -170,26 +247,22 @@ export function buildAvatar(name, skin) {
         }
       } else if (side === 'top') {
         // Full hair on top
-        ctx.fillStyle = hairColor;
-        ctx.fillRect(0, 0, 32, 32);
+        fillNoiseBlock(0, 0, 32, 32, hairColor);
       } else if (side === 'sides') {
         // Hair wraps down half way
-        ctx.fillStyle = hairColor;
-        ctx.fillRect(0, 0, 32, 14);
+        fillNoiseBlock(0, 0, 32, 14, hairColor);
         // Long hair strands down the sides
-        ctx.fillRect(0, 14, 8, 18);
-        ctx.fillRect(24, 14, 8, 18);
+        fillNoiseBlock(0, 14, 8, 18, hairColor);
+        fillNoiseBlock(24, 14, 8, 18, hairColor);
       } else if (side === 'back') {
         // Hair covers back entirely
-        ctx.fillStyle = hairColor;
-        ctx.fillRect(0, 0, 32, 32);
+        fillNoiseBlock(0, 0, 32, 32, hairColor);
       }
     } else if (type === 'body') {
       if (side === 'front') {
-        if (skin === 'gothic') {
+        if (skinObj === 'gothic' || faceStyle === 'gothic') {
           // Goth corset with silver lace details
-          ctx.fillStyle = '#333333';
-          ctx.fillRect(10, 6, 12, 20); // Silver corset core
+          fillNoiseBlock(10, 6, 12, 20, '#333333'); // Silver corset core
           ctx.fillStyle = '#121212';
           // Draw horizontal lace bands
           ctx.fillRect(12, 10, 8, 2);
@@ -198,29 +271,25 @@ export function buildAvatar(name, skin) {
           // Velvet collar
           ctx.fillStyle = '#000000';
           ctx.fillRect(0, 0, 32, 4);
-        } else if (skin === 'galaxy') {
+        } else if (skinObj === 'galaxy' || faceStyle === 'galaxy') {
           // Nebula swirls & Golden stars
-          ctx.fillStyle = '#2a1a5e';
-          ctx.fillRect(0, 0, 32, 32);
+          fillNoiseBlock(0, 0, 32, 32, '#2a1a5e');
           ctx.fillStyle = '#ffd700'; // Golden stars
           ctx.fillRect(6, 6, 2, 2);
           ctx.fillRect(24, 8, 2, 2);
           ctx.fillRect(14, 20, 2, 2);
-          ctx.fillStyle = '#ff80ff'; // Neon pink nebula dust
-          ctx.fillRect(4, 16, 6, 4);
-          ctx.fillRect(20, 22, 8, 4);
-        } else if (skin === 'princess') {
+          fillNoiseBlock(4, 16, 6, 4, '#ff80ff'); // Neon pink nebula dust
+          fillNoiseBlock(20, 22, 8, 4, '#ff80ff');
+        } else if (skinObj === 'princess' || faceStyle === 'princess') {
           // Princess corset and gold embroidery medallion
-          ctx.fillStyle = '#ff1a75'; // darker hot pink borders
+          ctx.strokeStyle = '#ff1a75'; // darker hot pink borders
           ctx.strokeRect(4, 4, 24, 24);
           ctx.fillStyle = '#ffd700'; // Gold center medal
           ctx.fillRect(14, 12, 4, 4);
-          ctx.fillStyle = '#ffffff'; // White lace neck trim
-          ctx.fillRect(8, 0, 16, 4);
-        } else if (skin === 'mermaid') {
+          fillNoiseBlock(8, 0, 16, 4, '#ffffff'); // White lace neck trim
+        } else if (skinObj === 'mermaid' || faceStyle === 'mermaid') {
           // Shell bikini top drawn over skin
-          ctx.fillStyle = skinColor;
-          ctx.fillRect(0, 0, 32, 32);
+          fillNoiseBlock(0, 0, 32, 20, skinColor);
           ctx.fillStyle = '#00ffff'; // Turquoise shells
           ctx.fillRect(6, 8, 8, 6);
           ctx.fillRect(18, 8, 8, 6);
@@ -229,13 +298,26 @@ export function buildAvatar(name, skin) {
           ctx.strokeRect(6, 8, 8, 6);
           ctx.strokeRect(18, 8, 8, 6);
           // Scales bottom
-          ctx.fillStyle = '#008080';
-          ctx.fillRect(0, 20, 32, 12);
+          fillNoiseBlock(0, 20, 32, 12, '#008080');
           ctx.fillStyle = '#20b2aa';
           ctx.fillRect(4, 24, 4, 2);
           ctx.fillRect(14, 24, 4, 2);
           ctx.fillRect(24, 24, 4, 2);
         }
+      }
+    } else if (type === 'arm') {
+      // Arms have shirt sleeve color on top, skin color at bottom 30% (hand/cuff)
+      if (side === 'bottom') {
+        fillNoiseBlock(0, 0, 32, 32, skinColor);
+      } else if (side !== 'top') {
+        fillNoiseBlock(0, 22, 32, 10, skinColor);
+      }
+    } else if (type === 'leg') {
+      // Legs have pants color on top, shoe color at bottom 20% (shoes)
+      if (side === 'bottom') {
+        fillNoiseBlock(0, 0, 32, 32, shoeColor);
+      } else if (side !== 'top') {
+        fillNoiseBlock(0, 26, 32, 6, shoeColor);
       }
     }
 
@@ -277,32 +359,46 @@ export function buildAvatar(name, skin) {
   avatarGroup.add(bodyMesh);
 
   // C. Arms
+  const armMaterials = [
+    createPixelMaterial(shirtColor, { type: 'arm', side: 'side' }),   // Right
+    createPixelMaterial(shirtColor, { type: 'arm', side: 'side' }),   // Left
+    createPixelMaterial(shirtColor, { type: 'arm', side: 'top' }),    // Top (shoulder)
+    createPixelMaterial(skinColor, { type: 'arm', side: 'bottom' }),  // Bottom (hand)
+    createPixelMaterial(shirtColor, { type: 'arm', side: 'side' }),   // Front
+    createPixelMaterial(shirtColor, { type: 'arm', side: 'side' })    // Back
+  ];
   const armGeo = new THREE.BoxGeometry(0.14, 0.72, 0.14);
-  const armMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.8 });
 
-  const leftArm = new THREE.Mesh(armGeo, armMat);
+  const leftArm = new THREE.Mesh(armGeo, armMaterials);
   leftArm.position.set(-0.33, 0.06, 0);
   leftArm.castShadow = true;
   leftArm.receiveShadow = true;
   avatarGroup.add(leftArm);
 
-  const rightArm = new THREE.Mesh(armGeo, armMat);
+  const rightArm = new THREE.Mesh(armGeo, armMaterials);
   rightArm.position.set(0.33, 0.06, 0);
   rightArm.castShadow = true;
   rightArm.receiveShadow = true;
   avatarGroup.add(rightArm);
 
   // D. Legs
+  const legMaterials = [
+    createPixelMaterial(pantsColor, { type: 'leg', side: 'side' }),   // Right
+    createPixelMaterial(pantsColor, { type: 'leg', side: 'side' }),   // Left
+    createPixelMaterial(pantsColor, { type: 'leg', side: 'top' }),    // Top
+    createPixelMaterial(shoeColor, { type: 'leg', side: 'bottom' }),  // Bottom (sole)
+    createPixelMaterial(pantsColor, { type: 'leg', side: 'side' }),   // Front
+    createPixelMaterial(pantsColor, { type: 'leg', side: 'side' })    // Back
+  ];
   const legGeo = new THREE.BoxGeometry(0.18, 0.72, 0.18);
-  const legMat = new THREE.MeshStandardMaterial({ color: pantsColor, roughness: 0.8 });
 
-  const leftLeg = new THREE.Mesh(legGeo, legMat);
+  const leftLeg = new THREE.Mesh(legGeo, legMaterials);
   leftLeg.position.set(-0.11, -0.66, 0);
   leftLeg.castShadow = true;
   leftLeg.receiveShadow = true;
   avatarGroup.add(leftLeg);
 
-  const rightLeg = new THREE.Mesh(legGeo, legMat);
+  const rightLeg = new THREE.Mesh(legGeo, legMaterials);
   rightLeg.position.set(0.11, -0.66, 0);
   rightLeg.castShadow = true;
   rightLeg.receiveShadow = true;
@@ -313,9 +409,10 @@ export function buildAvatar(name, skin) {
   let crownMesh = null;
   let wizardHatGroup = null;
   let starfishMesh = null;
+  let wandMesh = null;
 
-  // A. GOTHIC BAT WINGS (Manon's Special Gothic Skin)
-  if (skin === 'gothic') {
+  // A. GOTHIC BAT WINGS (Manon's Special Gothic Skin or Custom Accessory)
+  if (skinObj === 'gothic' || accessoryType === 'wings') {
     wingGroup = new THREE.Group();
     wingGroup.name = 'wings';
     wingGroup.position.set(0, 0.15, -0.13); // Mount behind body
@@ -371,11 +468,11 @@ export function buildAvatar(name, skin) {
     avatarGroup.add(wingGroup);
   }
 
-  // B. SHINING 3D GOLDEN PRINCESS CROWN (Margot's Special Princess Skin)
-  if (skin === 'princess') {
+  // B. SHINING 3D GOLDEN PRINCESS CROWN (Margot's Special Princess Skin or Custom Accessory)
+  if (skinObj === 'princess' || accessoryType === 'crown') {
     crownMesh = new THREE.Group();
     crownMesh.name = 'crown';
-    crownMesh.position.set(0, 0.26, 0); // Sits on top of the head (head y center is 0, height is 0.48 so 0.24 is the crown baseline)
+    crownMesh.position.set(0, 0.26, 0); // Sits on top of the head
 
     const goldMat = new THREE.MeshStandardMaterial({
       color: '#ffd700',
@@ -427,11 +524,15 @@ export function buildAvatar(name, skin) {
     jRight.position.set(0.15, 0.12, 0);
     crownMesh.add(jRight);
 
+    const jBack = new THREE.Mesh(jewelGeo, jewelMat);
+    jBack.position.set(0, 0.12, -0.15);
+    crownMesh.add(jBack);
+
     headMesh.add(crownMesh); // Child of head so it rotates perfectly together
   }
 
-  // C. POINTED 3D WIZARD HAT (Manon's Special Galaxy Mage Skin)
-  if (skin === 'galaxy') {
+  // C. POINTED 3D WIZARD HAT (Manon's Special Galaxy Mage Skin or Custom Accessory)
+  if (skinObj === 'galaxy' || accessoryType === 'hat') {
     wizardHatGroup = new THREE.Group();
     wizardHatGroup.name = 'wizardHat';
     wizardHatGroup.position.set(0, 0.24, 0); // Sits on top of head
@@ -477,8 +578,8 @@ export function buildAvatar(name, skin) {
     headMesh.add(wizardHatGroup); // Child of head
   }
 
-  // D. ORANGE STARFISH CROWN (Margot's Mermaid Queen Skin)
-  if (skin === 'mermaid') {
+  // D. ORANGE STARFISH CROWN (Margot's Mermaid Queen Skin or Custom Accessory)
+  if (skinObj === 'mermaid' || accessoryType === 'starfish') {
     starfishMesh = new THREE.Group();
     starfishMesh.name = 'starfishCrown';
     starfishMesh.position.set(0.18, 0.14, 0.16); // Placed cute asymmetrically on the front-right of the hair
@@ -530,13 +631,71 @@ export function buildAvatar(name, skin) {
     headMesh.add(starfishMesh); // Child of head
   }
 
+  // E. GLOWING MAGIC WAND (Harry Potter Theme or Custom Accessory)
+  if (skinObj === 'wizard' || accessoryType === 'wand') {
+    wandMesh = new THREE.Group();
+    wandMesh.name = 'magicWand';
+    
+    // Position extending from bottom of right arm
+    wandMesh.position.set(0, -0.32, 0.1);
+    // Angle forward
+    wandMesh.rotation.set(Math.PI / 3, 0, 0);
+
+    const woodMat = new THREE.MeshStandardMaterial({
+      color: '#4e2f1d', // Mahogany brown
+      roughness: 0.9
+    });
+
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: '#ffea00' // Glowing golden light tip
+    });
+
+    // Wand shaft
+    const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.35, 0.04), woodMat);
+    shaft.position.y = 0.1;
+    wandMesh.add(shaft);
+
+    // Glowing tip
+    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.05), glowMat);
+    tip.position.y = 0.28;
+    wandMesh.add(tip);
+
+    // Decorative magical tip spark
+    const star = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.08, 0.02), glowMat);
+    star.position.set(0, 0.31, 0);
+    wandMesh.add(star);
+
+    // Tip glow light sources
+    const tipLight = new THREE.PointLight(0xffea00, 0.6, 2);
+    tipLight.position.set(0, 0.3, 0);
+    wandMesh.add(tipLight);
+
+    rightArm.add(wandMesh); // Child of right arm
+  }
+
   // --- 5. VISIBILITY LAYERS ---
-  // Ensure the entire avatar group casts and receives shadows recursively
+  // Ensure the entire avatar group casts and receives shadows recursively and gets glossy standard material properties
   avatarGroup.traverse((child) => {
-    child.castShadow = true;
-    child.receiveShadow = true;
-    if (child.material) {
-      child.material.side = THREE.DoubleSide;
+    if (child.isMesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+      if (child.material) {
+        if (Array.isArray(child.material)) {
+          child.material.forEach(m => {
+            m.side = THREE.DoubleSide;
+            if (m.isMeshStandardMaterial) {
+              m.roughness = 0.65;
+              m.metalness = 0.2;
+            }
+          });
+        } else {
+          child.material.side = THREE.DoubleSide;
+          if (child.material.isMeshStandardMaterial) {
+            child.material.roughness = 0.65;
+            child.material.metalness = 0.2;
+          }
+        }
+      }
     }
   });
 
@@ -551,7 +710,8 @@ export function buildAvatar(name, skin) {
     wings: wingGroup,
     crown: crownMesh,
     hat: wizardHatGroup,
-    starfish: starfishMesh
+    starfish: starfishMesh,
+    wand: wandMesh
   };
 }
 
@@ -561,7 +721,7 @@ export function buildAvatar(name, skin) {
 export function updateAvatarAnimations(avatarData, time, isMoving) {
   if (!avatarData || !avatarData.group) return;
 
-  const { leftArm, rightArm, leftLeg, rightLeg, wings, crown, hat, starfish } = avatarData;
+  const { leftArm, rightArm, leftLeg, rightLeg, wings, crown, hat, starfish, wand } = avatarData;
 
   // 1. Walk/Limb movement
   if (isMoving) {
@@ -609,5 +769,14 @@ export function updateAvatarAnimations(avatarData, time, isMoving) {
   if (starfish) {
     // Tiny sea-sway
     starfish.rotation.z = -Math.PI / 6 + 0.05 * Math.sin(time * 0.001 * 2);
+  }
+
+  if (wand) {
+    // Elegant shimmering wand glow
+    wand.rotation.y = time * 0.003;
+    const tipLight = wand.children.find(c => c.type === 'PointLight');
+    if (tipLight) {
+      tipLight.intensity = 0.5 + 0.3 * Math.sin(time * 0.005);
+    }
   }
 }

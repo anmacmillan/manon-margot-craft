@@ -96,15 +96,89 @@ export class Player {
     window.addEventListener('blur', () => {
       this.keysPressed = {};
     });
+
+    // Wire up on-screen clicking of the toolbar icons for child accessibility
+    const toolbar = document.getElementById('toolbar');
+    if (toolbar) {
+      toolbar.addEventListener('click', (event) => {
+        const icon = event.target.closest('.toolbar-icon');
+        if (icon) {
+          const idStr = icon.id.replace('toolbar-', '');
+          const id = parseInt(idStr, 10);
+          if (!isNaN(id)) {
+            this.selectSlot(id);
+          }
+        }
+      });
+    }
+
+    // Wire up teleport button click
+    const teleportBtn = document.getElementById('teleport-btn');
+    if (teleportBtn) {
+      teleportBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        this.teleportToRemote();
+      });
+    }
+  }
+
+  /**
+   * Updates the selected slot and tool visibility
+   */
+  selectSlot(digit) {
+    if (digit < 0 || digit > 8) return;
+    document.getElementById(`toolbar-${this.activeBlockId}`)?.classList.remove('selected');
+    document.getElementById(`toolbar-${digit}`)?.classList.add('selected');
+    this.activeBlockId = digit;
+    this.tool.container.visible = (this.activeBlockId === 0);
+  }
+
+  /**
+   * Teleports player directly to sister's coordinate with vertical safety offset
+   */
+  teleportToRemote() {
+    if (window.network && window.network.isConnected) {
+      const targetPos = window.network.remoteTargetPosition || window.network.remotePosition;
+      if (targetPos) {
+        this.position.copy(targetPos);
+        this.position.y += 1.5;
+        this.velocity.set(0, 0, 0);
+        console.log("Teleported to sister at", this.position);
+      }
+    }
   }
 
   onCameraLock() {
+    this.hasLockedOnce = true;
     document.getElementById('overlay').style.visibility = 'hidden';
+    this.hideMouseUnlockHint();
   }
 
   onCameraUnlock() {
     if (!this.debugCamera) {
-      document.getElementById('overlay').style.visibility = 'visible';
+      if (!this.hasLockedOnce) {
+        document.getElementById('overlay').style.visibility = 'visible';
+      } else {
+        this.showMouseUnlockHint();
+      }
+    }
+    // Automatically clear active spawner selection when pointer unlocks!
+    this.activeSpawner = null;
+    document.querySelectorAll('.spawner-btn').forEach(btn => btn.classList.remove('active'));
+  }
+
+  showMouseUnlockHint() {
+    const hint = document.getElementById('mouse-unlock-hint');
+    if (hint) {
+      hint.classList.add('visible');
+    }
+  }
+
+  hideMouseUnlockHint() {
+    const hint = document.getElementById('mouse-unlock-hint');
+    if (hint) {
+      hint.classList.remove('visible');
     }
   }
 
@@ -233,7 +307,9 @@ export class Player {
       if (this.keysPressed['Space']) {
         this.velocity.y = flySpeed;
       } else if (
-        this.keysPressed['ShiftLeft'] || this.keysPressed['ShiftRight'] ||
+        (!this.suppressShiftDescent && 
+         (this.keysPressed['ShiftLeft'] || this.keysPressed['ShiftRight']) && 
+         (performance.now() - (this.shiftPressedTime || 0) > 300)) ||
         this.keysPressed['ControlLeft'] || this.keysPressed['ControlRight'] ||
         this.keysPressed['KeyC'] || this.keysPressed['c']
       ) {
@@ -314,8 +390,8 @@ export class Player {
     this.tool.container.receiveShadow = true;
     this.tool.container.castShadow = true;
 
-    // Set container position in bottom-right view of first-person camera space
-    this.tool.container.position.set(0.35, -0.25, -0.45);
+    // Set container position in bottom-right view of first-person camera space (more centralised to avoid Chrome edge-clipping)
+    this.tool.container.position.set(0.28, -0.22, -0.42);
     this.tool.container.scale.set(1, 1, 1);
 
     // Natural pickaxe holding angles
@@ -334,10 +410,30 @@ export class Player {
    * Animates the tool rotation
    */
   updateToolAnimation() {
-    if (this.tool.container.children.length > 0) {
-      const t = this.tool.animationSpeed * (performance.now() - this.tool.animationStart);
-      this.tool.container.children[0].rotation.y = 0.5 * Math.sin(t);
+    const duration = 250; // Snappy pickaxe swing duration (250ms)
+    const elapsed = performance.now() - this.tool.animationStart;
+
+    if (elapsed >= duration) {
+      this.tool.animate = false;
+      // Reset precisely to standard holding pose
+      this.tool.container.position.set(0.28, -0.22, -0.42);
+      this.tool.container.rotation.set(-Math.PI / 4, -Math.PI / 3, Math.PI / 6);
+      return;
     }
+
+    const progress = elapsed / duration;
+    // Elegant sine-wave swing shape
+    const swing = Math.sin(progress * Math.PI);
+
+    // Apply rotation transformations for a natural 3D slashing arc
+    this.tool.container.rotation.x = -Math.PI / 4 - swing * 0.6;
+    this.tool.container.rotation.y = -Math.PI / 3 + swing * 0.4;
+    this.tool.container.rotation.z = Math.PI / 6 - swing * 0.3;
+
+    // Apply position offsets for forward physical thrust
+    this.tool.container.position.x = 0.28 - swing * 0.08;
+    this.tool.container.position.y = -0.22 - swing * 0.08;
+    this.tool.container.position.z = -0.42 + swing * 0.12;
   }
 
   /**
@@ -377,6 +473,71 @@ export class Player {
     this.keysPressed[event.code] = true;
     this.keysPressed[event.key.toLowerCase()] = true;
 
+    // Track physical shift-down timing to support reverting accidental creative-flight plummeting
+    if (event.code === 'ShiftLeft' || event.code === 'ShiftRight') {
+      this.shiftPressedTime = performance.now();
+      this.positionYOnShift = this.position.y;
+    }
+
+    const keyLower = event.key.toLowerCase();
+
+    // Unshifted AZERTY top-row mappings for seamless slots 1-8 navigation
+    const azertyRow = {
+      '&': 1,
+      'é': 2,
+      '"': 3,
+      '\'': 4,
+      '(': 5,
+      '-': 6,
+      '§': 6, // Belgian AZERTY key 6
+      'è': 7,
+      '_': 8,
+      '!': 8  // Belgian AZERTY key 8
+    };
+
+    // Set transient suppression of flight descent if any slot digits (0-8) are pressed under Shift
+    if (event.shiftKey && (
+      (event.code && event.code.startsWith('Digit')) ||
+      (event.key && event.key >= '0' && event.key <= '9') ||
+      azertyRow[event.key] !== undefined ||
+      keyLower === 'à'
+    )) {
+      this.suppressShiftDescent = true;
+      // Revert accidental descent if they tapped Shift + digit (AZERTY number row chord) within 1000ms
+      if (this.shiftPressedTime && performance.now() - this.shiftPressedTime < 1000 && this.positionYOnShift !== undefined) {
+        this.position.y = this.positionYOnShift;
+        this.velocity.y = 0;
+      }
+    }
+
+    // Direct mapping to toggle mouse lock/unlock on AZERTY / QWERTY
+    if (keyLower === 'm') {
+      if (this.controls.isLocked) {
+        this.controls.unlock();
+      } else {
+        this.controls.lock();
+      }
+      return;
+    }
+
+    // Direct mappings to select hotbar slot 0 (pickaxe) on AZERTY / QWERTY
+    if (
+      keyLower === 'p' || 
+      keyLower === 'x' || 
+      event.key === '²' || 
+      event.key === '`' || 
+      event.key === 'à' || 
+      event.code === 'Backquote'
+    ) {
+      this.selectSlot(0);
+      return;
+    }
+
+    if (azertyRow[event.key] !== undefined) {
+      this.selectSlot(azertyRow[event.key]);
+      return;
+    }
+
     switch (event.code) {
       case 'Digit0':
       case 'Digit1':
@@ -397,22 +558,16 @@ export class Player {
       case 'Numpad7':
       case 'Numpad8': {
         const digit = Number(event.code.slice(-1));
-
-        // Update the selected toolbar icon
-        document.getElementById(`toolbar-${this.activeBlockId}`)?.classList.remove('selected');
-        document.getElementById(`toolbar-${digit}`)?.classList.add('selected');
-
-        this.activeBlockId = digit;
-
-        // Update the pickaxe visibility
-        this.tool.container.visible = (this.activeBlockId === 0);
-
+        this.selectSlot(digit);
         break;
       }
       case 'KeyR':
         if (this.repeat) break;
         this.position.y = 32;
         this.velocity.set(0, 0, 0);
+        break;
+      case 'KeyT':
+        this.teleportToRemote();
         break;
       case 'ShiftLeft':
       case 'ShiftRight':
@@ -443,6 +598,7 @@ export class Player {
       case 'ShiftLeft':
       case 'ShiftRight':
         this.sprinting = false;
+        this.suppressShiftDescent = false; // Reset the suppression flag when Shift is released
         break;
     }
   }
@@ -465,6 +621,22 @@ export class Player {
     }
 
     if (this.controls.isLocked) {
+      // Trigger swing animation on EVERY click while locked, even in mid-air (no selection required)
+      if (!this.tool.animate) {
+        this.tool.animate = true;
+        this.tool.animationStart = performance.now();
+
+        // Clear existing timeout
+        clearTimeout(this.tool.animation);
+
+        // Safety backup to turn off animation after 250ms
+        this.tool.animation = setTimeout(() => {
+          this.tool.animate = false;
+          this.tool.container.position.set(0.28, -0.22, -0.42);
+          this.tool.container.rotation.set(-Math.PI / 4, -Math.PI / 3, Math.PI / 6);
+        }, 250);
+      }
+
       // Is a block selected?
       if (this.selectedCoords) {
         // Intercept block placement if a magic spawner is active!
@@ -501,20 +673,6 @@ export class Player {
           // Send block placement packet to sister
           window.network?.sendBlockChange('add', this.selectedCoords.x, this.selectedCoords.y, this.selectedCoords.z, this.activeBlockId);
         }
-
-        // If the tool isn't currently animating, trigger the animation
-        if (!this.tool.animate) {
-          this.tool.animate = true;
-          this.tool.animationStart = performance.now();
-
-          // Clear the existing timeout so it doesn't cancel our new animation
-          clearTimeout(this.tool.animation);
-
-          // Stop the animation after 1.5 cycles
-          this.tool.animation = setTimeout(() => {
-            this.tool.animate = false;
-          }, 3 * Math.PI / this.tool.animationSpeed);
-        }
       }
     }
   }
@@ -537,14 +695,7 @@ export class Player {
     if (newBlockId < 0) newBlockId = 8;
     if (newBlockId > 8) newBlockId = 0;
 
-    // Update the visual toolbar selection classes
-    document.getElementById(`toolbar-${this.activeBlockId}`)?.classList.remove('selected');
-    document.getElementById(`toolbar-${newBlockId}`)?.classList.add('selected');
-
-    this.activeBlockId = newBlockId;
-
-    // Toggle tool/pickaxe visibility depending on active block slot
-    this.tool.container.visible = (this.activeBlockId === 0);
+    this.selectSlot(newBlockId);
   }
 
   /**
