@@ -322,23 +322,41 @@ function initLauncher() {
     launchGame('margot', 'coop');
   });
 
-  // Bind Floating Magic Spawner Sidebar buttons
+  // Bind Floating Magic Spawner Sidebar buttons.
+  // One-click spawn-at-feet: the structure pops up right next to the player,
+  // no aiming. Much friendlier for the girls than the old aim-and-click flow.
   const bindSpawnerBtn = (id, type) => {
     document.getElementById(id)?.addEventListener('click', (e) => {
       e.stopPropagation();
-      
-      // If already active, toggle it off
-      if (player.activeSpawner === type) {
-        player.activeSpawner = null;
-        document.getElementById(id)?.classList.remove('active');
-      } else {
-        // Clear other active classes
-        document.querySelectorAll('.spawner-btn').forEach(btn => btn.classList.remove('active'));
-        player.activeSpawner = type;
-        document.getElementById(id)?.classList.add('active');
-        
-        // Auto-lock pointer to make aiming easier for the girls!
-        player.controls.lock();
+
+      // Find a sensible ground position 4 blocks in front of the player
+      const yaw = player.controls.getObject().rotation.y;
+      const fx = Math.round(player.position.x - Math.sin(yaw) * 4);
+      const fz = Math.round(player.position.z - Math.cos(yaw) * 4);
+
+      // Scan down to find solid ground (skipping clouds/glass)
+      const SKY_BLOCKS = new Set([9, 17]);
+      let fy = null;
+      for (let y = 40; y > 0; y--) {
+        const b = world.getBlock(fx, y, fz);
+        if (b && b.id && b.id !== 0 && !SKY_BLOCKS.has(b.id)) { fy = y + 1; break; }
+      }
+      if (fy === null) fy = Math.round(player.position.y);
+
+      world.spawnStructure(type, fx, fy, fz);
+
+      // Quick visual flash so it's obvious something happened
+      const btn = document.getElementById(id);
+      if (btn) {
+        btn.classList.add('active');
+        setTimeout(() => btn.classList.remove('active'), 800);
+      }
+
+      // Status banner confirmation
+      const status = document.getElementById('status');
+      if (status) {
+        status.innerHTML = `✨ Spawned ${type.replace(/-/g, ' ')}!`;
+        setTimeout(() => status.innerHTML = '', 2500);
       }
     });
   };
