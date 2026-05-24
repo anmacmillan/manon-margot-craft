@@ -356,6 +356,15 @@ function initLauncher() {
   bindSpawnerBtn('spawn-ice-castle', 'ice-castle');
   bindSpawnerBtn('spawn-mushroom-kingdom', 'mushroom-kingdom');
 
+  // ESC always clears any active magic spawner — fallback when the user clicks
+  // empty sky and the placement code can't fire its own clear path.
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      player.activeSpawner = null;
+      document.querySelectorAll('.spawner-btn').forEach(btn => btn.classList.remove('active'));
+    }
+  });
+
   // Mute toggle (button + 'N' key)
   const muteBtn = document.getElementById('mute-btn');
   const audio = getAmbientAudio();
