@@ -39,19 +39,34 @@ h1 {
   border: 4px solid rgb(147, 147, 147);
   padding: 8px;
   display: flex;
-  justify-content: space-between;
-  column-gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: 8px;
+  row-gap: 6px;
+  max-width: 90vw;
 }
 
 .toolbar-icon {
-  width: 64px;
-  height: 64px;
-  outline: 4px solid rgb(58, 58, 58);;
+  width: 56px;
+  height: 56px;
+  outline: 3px solid rgb(58, 58, 58);
+  flex-shrink: 0;
 }
 
 .toolbar-icon.selected {
   outline: 4px solid white;
 }
+
+/* Solid-colour blocks rendered as CSS tiles (no PNG file needed) */
+.toolbar-icon.color-tile     { display: inline-block; }
+.toolbar-icon.cloud-tile     { background: #f0f0f0; }
+.toolbar-icon.snow-tile      { background: #fafafa; }
+.toolbar-icon.pink-tile      { background: #ff70b0; }
+.toolbar-icon.gold-tile      { background: #ffd040; }
+.toolbar-icon.glass-tile     { background: rgba(168, 216, 232, 0.6); border: 2px solid #a8d8e8; }
+.toolbar-icon.obsidian-tile  { background: #120420; }
+.toolbar-icon.lapis-tile     { background: #1a3d8f; }
+.toolbar-icon.brick-tile     { background: #a83828; }
 
 #overlay {
   position: fixed;
@@ -342,6 +357,22 @@ h1 {
   font-size: 0.95rem;
   padding: 8px 12px;
 }
+
+#mute-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  background: rgba(15, 23, 42, 0.85);
+  color: white;
+  border: 2px solid rgba(255, 215, 0, 0.6);
+  border-radius: 8px;
+  font-size: 1.2rem;
+  width: 44px;
+  height: 44px;
+  cursor: pointer;
+  z-index: 100;
+}
+#mute-btn:hover { background: rgba(15, 23, 42, 1); }
 
 .card-actions .big-coop-btn {
   font-size: 1.1rem;

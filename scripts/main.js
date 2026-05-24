@@ -10,6 +10,7 @@ import { NetworkManager } from './network';
 import { AvatarEditor } from './avatarEditor.js';
 import { installIpadControls } from './touchControls.js';
 import { CreatureManager } from './creatures.js';
+import { getAmbientAudio } from './ambientAudio.js';
 
 
 window.gameStarted = false;
@@ -245,6 +246,9 @@ function initLauncher() {
       setTimeout(() => creatures.populateInitial(), 500);
     }
 
+    // Start ambient music on first user gesture (game launch click counts)
+    getAmbientAudio().resume();
+
     // Elegant auto-pointerlock transition on game launch!
     player.controls.lock();
   };
@@ -319,6 +323,22 @@ function initLauncher() {
   bindSpawnerBtn('spawn-dragon-lair', 'dragon-lair');
   bindSpawnerBtn('spawn-ice-castle', 'ice-castle');
   bindSpawnerBtn('spawn-mushroom-kingdom', 'mushroom-kingdom');
+
+  // Mute toggle (button + 'N' key)
+  const muteBtn = document.getElementById('mute-btn');
+  const audio = getAmbientAudio();
+  const updateMuteUi = (muted) => { if (muteBtn) muteBtn.textContent = muted ? '🔇' : '🔊'; };
+  muteBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    audio.resume();
+    updateMuteUi(audio.toggleMute());
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'n') {
+      audio.resume();
+      updateMuteUi(audio.toggleMute());
+    }
+  });
 }
 
 if (document.readyState === 'loading') {

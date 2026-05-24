@@ -158,6 +158,36 @@ export const blocks = {
       new THREE.MeshLambertMaterial({ color: 0x80c080, map: textures.grassSide })  // back
     ]
   },
+  pinkWool: {
+    id: 15,
+    name: 'pinkWool',
+    material: new THREE.MeshLambertMaterial({ color: 0xff70b0 })
+  },
+  gold: {
+    id: 16,
+    name: 'gold',
+    material: new THREE.MeshLambertMaterial({ color: 0xffd040 })
+  },
+  glass: {
+    id: 17,
+    name: 'glass',
+    material: new THREE.MeshLambertMaterial({ color: 0xa8d8e8, transparent: true, opacity: 0.55 })
+  },
+  obsidian: {
+    id: 18,
+    name: 'obsidian',
+    material: new THREE.MeshLambertMaterial({ color: 0x120420 })
+  },
+  lapis: {
+    id: 19,
+    name: 'lapis',
+    material: new THREE.MeshLambertMaterial({ color: 0x1a3d8f })
+  },
+  brick: {
+    id: 20,
+    name: 'brick',
+    material: new THREE.MeshLambertMaterial({ color: 0xa83828 })
+  },
 };
 
 export const resources = [

@@ -127,7 +127,9 @@ export class Player {
    * Updates the selected slot and tool visibility
    */
   selectSlot(digit) {
-    if (digit < 0 || digit > 8) return;
+    if (digit < 0 || digit > 20) return;
+    // Skip block IDs that aren't defined (14 = jungleGrass exists but we skip it in UI ordering)
+    if (digit === 14) return;
     document.getElementById(`toolbar-${this.activeBlockId}`)?.classList.remove('selected');
     document.getElementById(`toolbar-${digit}`)?.classList.add('selected');
     this.activeBlockId = digit;
@@ -692,8 +694,10 @@ export class Player {
 
     // Calculate the new hotbar block slot (wrapping between 0 and 8)
     let newBlockId = this.activeBlockId + delta;
-    if (newBlockId < 0) newBlockId = 8;
-    if (newBlockId > 8) newBlockId = 0;
+    // Cycle through all toolbar slots: 0 (pickaxe) → 1..13 → 15..20 (skip empty slot 14)
+    if (newBlockId === 14) newBlockId = newBlockId > this.activeBlockId ? 15 : 13;
+    if (newBlockId < 0) newBlockId = 20;
+    if (newBlockId > 20) newBlockId = 0;
 
     this.selectSlot(newBlockId);
   }
