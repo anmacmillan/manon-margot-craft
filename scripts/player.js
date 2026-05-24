@@ -26,7 +26,10 @@ export class Player {
 
   raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(), 0, 3);
   selectedCoords = null;
+  placeCoords = null;
   activeBlockId = blocks.empty.id;
+  activePointerButtons = new Set();
+  actionRepeatTimers = new Map();
 
   tool = {
     // Group that will contain the tool mesh
@@ -90,11 +93,16 @@ export class Player {
     document.addEventListener('keyup', this.onKeyUp.bind(this));
     document.addEventListener('keydown', this.onKeyDown.bind(this));
     document.addEventListener('mousedown', this.onMouseDown.bind(this));
+    document.addEventListener('mouseup', this.onMouseUp.bind(this));
+    document.addEventListener('contextmenu', (event) => {
+      if (window.gameStarted) event.preventDefault();
+    });
     document.addEventListener('wheel', this.onWheel.bind(this), { passive: false });
 
-    // Reset key presses on window blur to prevent stuck key issues (like infinite flying)
+    // Reset key presses / held actions on window blur to prevent stuck input issues
     window.addEventListener('blur', () => {
       this.keysPressed = {};
+      this.stopAllActions();
     });
 
     // Wire up on-screen clicking of the toolbar icons for child accessibility
@@ -151,6 +159,12 @@ export class Player {
     }
   }
 
+  isUiEventTarget(target) {
+    return !!target?.closest?.(
+      '#toolbar-container, #magic-spawner-container, #teleport-btn, #multiplayer-status, #mouse-unlock-hint, #launcher-portal, #avatar-editor-drawer, #mute-btn, #touch-hud, .lil-gui'
+    );
+  }
+
   onCameraLock() {
     this.hasLockedOnce = true;
     document.getElementById('overlay').style.visibility = 'hidden';
@@ -158,6 +172,7 @@ export class Player {
   }
 
   onCameraUnlock() {
+    this.stopAllActions();
     if (!this.debugCamera) {
       if (!this.hasLockedOnce) {
         document.getElementById('overlay').style.visibility = 'visible';
@@ -191,6 +206,7 @@ export class Player {
   update(world) {
     this.updateBoundsHelper();
     this.updateRaycaster(world);
+    this.updateHeldActions();
 
     if (this.tool.animate) {
       this.updateToolAnimation();
@@ -263,18 +279,111 @@ export class Player {
       // the block coordinates
       this.selectedCoords = chunk.position.clone();
       this.selectedCoords.applyMatrix4(blockMatrix);
-
-      if (this.activeBlockId !== blocks.empty.id) {
-        // If we are adding a block, move it 1 block over in the direction
-        // of where the ray intersected the cube
-        this.selectedCoords.add(intersection.normal);
-      }
+      this.placeCoords = this.selectedCoords.clone().add(intersection.normal);
 
       this.selectionHelper.position.copy(this.selectedCoords);
       this.selectionHelper.visible = true;
     } else {
       this.selectedCoords = null;
+      this.placeCoords = null;
       this.selectionHelper.visible = false;
+    }
+  }
+
+  triggerToolSwing() {
+    if (this.tool.animate) return;
+    this.tool.animate = true;
+    this.tool.animationStart = performance.now();
+
+    clearTimeout(this.tool.animation);
+    this.tool.animation = setTimeout(() => {
+      this.tool.animate = false;
+      this.tool.container.position.set(0.28, -0.22, -0.42);
+      this.tool.container.rotation.set(-Math.PI / 4, -Math.PI / 3, Math.PI / 6);
+    }, 250);
+  }
+
+  breakSelectedBlock() {
+    if (!this.selectedCoords) return;
+
+    this.triggerToolSwing();
+    this.world.removeBlock(
+      this.selectedCoords.x,
+      this.selectedCoords.y,
+      this.selectedCoords.z
+    );
+    window.network?.sendBlockChange('remove', this.selectedCoords.x, this.selectedCoords.y, this.selectedCoords.z);
+  }
+
+  placeSelectedBlock() {
+    if (!this.placeCoords || this.activeBlockId === blocks.empty.id) return;
+
+    this.world.addBlock(
+      this.placeCoords.x,
+      this.placeCoords.y,
+      this.placeCoords.z,
+      this.activeBlockId
+    );
+    window.network?.sendBlockChange('add', this.placeCoords.x, this.placeCoords.y, this.placeCoords.z, this.activeBlockId);
+  }
+
+  performPointerAction(button) {
+    if (!window.gameStarted || !this.controls.isLocked) return;
+
+    if (this.activeSpawner && this.placeCoords) {
+      this.world.spawnStructure(
+        this.activeSpawner,
+        this.placeCoords.x,
+        this.placeCoords.y,
+        this.placeCoords.z
+      );
+      this.activeSpawner = null;
+      document.querySelectorAll('.spawner-btn').forEach(btn => btn.classList.remove('active'));
+      return;
+    }
+
+    if (button === 0) {
+      this.breakSelectedBlock();
+    } else if (button === 2) {
+      this.placeSelectedBlock();
+    }
+  }
+
+  startAction(button = 0) {
+    if (button !== 0 && button !== 2) return;
+    if (this.activePointerButtons.has(button)) return;
+
+    this.activePointerButtons.add(button);
+    this.performPointerAction(button);
+
+    const timeoutId = window.setTimeout(() => {
+      this.performPointerAction(button);
+      const intervalId = window.setInterval(() => this.performPointerAction(button), 125);
+      const timers = this.actionRepeatTimers.get(button) || {};
+      timers.intervalId = intervalId;
+      this.actionRepeatTimers.set(button, timers);
+    }, 250);
+
+    this.actionRepeatTimers.set(button, { timeoutId, intervalId: null });
+  }
+
+  stopAction(button) {
+    this.activePointerButtons.delete(button);
+    const timers = this.actionRepeatTimers.get(button);
+    if (timers?.timeoutId) clearTimeout(timers.timeoutId);
+    if (timers?.intervalId) clearInterval(timers.intervalId);
+    this.actionRepeatTimers.delete(button);
+  }
+
+  stopAllActions() {
+    Array.from(this.actionRepeatTimers.keys()).forEach((button) => this.stopAction(button));
+    this.activePointerButtons.clear();
+  }
+
+  updateHeldActions() {
+    if (this.controls.isLocked) return;
+    if (this.activePointerButtons.size > 0) {
+      this.stopAllActions();
     }
   }
 
@@ -612,6 +721,10 @@ export class Player {
   onMouseDown(event) {
     if (!window.gameStarted) return;
 
+    if (event.button === 2) {
+      event.preventDefault();
+    }
+
     if (!this.controls.isLocked) {
       // Only request lock when explicitly clicking the 3D canvas or the instruction overlay
       const isOverlayClick = event.target.closest('#overlay') !== null;
@@ -622,61 +735,12 @@ export class Player {
       return;
     }
 
-    if (this.controls.isLocked) {
-      // Trigger swing animation on EVERY click while locked, even in mid-air (no selection required)
-      if (!this.tool.animate) {
-        this.tool.animate = true;
-        this.tool.animationStart = performance.now();
+    if (this.isUiEventTarget(event.target)) return;
+    this.startAction(event.button);
+  }
 
-        // Clear existing timeout
-        clearTimeout(this.tool.animation);
-
-        // Safety backup to turn off animation after 250ms
-        this.tool.animation = setTimeout(() => {
-          this.tool.animate = false;
-          this.tool.container.position.set(0.28, -0.22, -0.42);
-          this.tool.container.rotation.set(-Math.PI / 4, -Math.PI / 3, Math.PI / 6);
-        }, 250);
-      }
-
-      // Is a block selected?
-      if (this.selectedCoords) {
-        // Intercept block placement if a magic spawner is active!
-        if (this.activeSpawner) {
-          this.world.spawnStructure(
-            this.activeSpawner,
-            this.selectedCoords.x,
-            this.selectedCoords.y,
-            this.selectedCoords.z
-          );
-          
-          // Reset active spawner state
-          this.activeSpawner = null;
-          document.querySelectorAll('.spawner-btn').forEach(btn => btn.classList.remove('active'));
-          return;
-        }
-
-        // If active block is an empty block, then we are in delete mode
-        if (this.activeBlockId === blocks.empty.id) {
-          this.world.removeBlock(
-            this.selectedCoords.x,
-            this.selectedCoords.y,
-            this.selectedCoords.z
-          );
-          // Send block removal packet to sister
-          window.network?.sendBlockChange('remove', this.selectedCoords.x, this.selectedCoords.y, this.selectedCoords.z);
-        } else {
-          this.world.addBlock(
-            this.selectedCoords.x,
-            this.selectedCoords.y,
-            this.selectedCoords.z,
-            this.activeBlockId
-          );
-          // Send block placement packet to sister
-          window.network?.sendBlockChange('add', this.selectedCoords.x, this.selectedCoords.y, this.selectedCoords.z, this.activeBlockId);
-        }
-      }
-    }
+  onMouseUp(event) {
+    this.stopAction(event.button);
   }
 
   /**

@@ -187,8 +187,8 @@ export class CreatureManager {
 
     // Heavy desktop default vs lean iPad budget (Manon's iPad is older — keep it tight)
     const counts = isIpadLike
-      ? { sheep: 2, pig: 1, chicken: 2 }
-      : { sheep: 8, pig: 6, chicken: 10 };
+      ? { sheep: 2, pig: 1, chicken: 2, villagers: 2 }
+      : { sheep: 8, pig: 6, chicken: 10, villagers: 4 };
 
     const scatter = (n, builder, type) => {
       for (let i = 0; i < n; i++) {
@@ -203,10 +203,27 @@ export class CreatureManager {
     scatter(counts.pig, buildPig, 'pig');
     scatter(counts.chicken, buildChicken, 'chicken');
 
+    // Always add a few ambient villagers near spawn so the world feels inhabited.
+    const villagerThemes = ['merchant', 'princess', 'fairy', 'monk'];
+    const px = this.player.position.x;
+    const pz = this.player.position.z;
+    const baseY = this.groundY(px, pz) ?? 32;
+    for (let i = 0; i < counts.villagers; i++) {
+      const ang = (i / counts.villagers) * Math.PI * 2;
+      const sx = px + Math.cos(ang) * (4 + (i % 2) * 2);
+      const sz = pz + Math.sin(ang) * (4 + (i % 2) * 2);
+      const sy = this.groundY(sx, sz) ?? baseY;
+      const theme = villagerThemes[i % villagerThemes.length];
+      const v = buildVillager(theme);
+      this.spawnCreature(`villager-${theme}`, v.group, new THREE.Vector3(sx, sy, sz), {
+        wanderRadius: 6,
+        anchor: new THREE.Vector3(sx, sy, sz),
+        villagerParts: v.parts
+      });
+    }
+
     // One follower golem (skip on iPad — heavy 9-mesh model close to camera)
     if (!isIpadLike) {
-      const px = this.player.position.x;
-      const pz = this.player.position.z;
       const gy = this.groundY(px, pz) ?? 32;
       this.spawnCreature('golem', buildIronGolem(), new THREE.Vector3(px + 3, gy, pz + 3), { follower: true });
     }
@@ -309,16 +326,21 @@ export class CreatureManager {
       if (dist > 0.3) {
         const speed = c.type.startsWith('villager') ? 0.8 : 1.2;
         const step = speed * stepDt;
-        c.mesh.position.x += (dx / dist) * step;
-        c.mesh.position.z += (dz / dist) * step;
-        const gy = this.groundY(c.mesh.position.x, c.mesh.position.z);
-        if (gy !== null) c.mesh.position.y += (gy - c.mesh.position.y) * 0.2;
+        const nextX = c.mesh.position.x + (dx / dist) * step;
+        const nextZ = c.mesh.position.z + (dz / dist) * step;
+        const gy = this.groundY(nextX, nextZ);
+
+        // Refuse moves that would make creatures hop onto nonsense heights or float over voids.
+        if (gy === null || Math.abs(gy - c.mesh.position.y) > 1.25) {
+          c.target.copy(c.anchor);
+          continue;
+        }
+
+        c.mesh.position.x = nextX;
+        c.mesh.position.z = nextZ;
+        c.mesh.position.y = gy;
         c.mesh.rotation.y = Math.atan2(dx, dz);
 
-        // Animal bob/wiggle while walking
-        if (c.type === 'chicken' || c.type === 'pig' || c.type === 'sheep') {
-          c.mesh.position.y += Math.sin(now * 0.01) * 0.005;
-        }
         // Villager limb swing
         if (c.villagerParts) {
           const t = now * 0.005;
@@ -327,6 +349,9 @@ export class CreatureManager {
           if (c.villagerParts.leftArm) c.villagerParts.leftArm.rotation.x = -0.4 * Math.sin(t);
           if (c.villagerParts.rightArm) c.villagerParts.rightArm.rotation.x = 0.4 * Math.sin(t);
         }
+      } else {
+        const gy = this.groundY(c.mesh.position.x, c.mesh.position.z);
+        if (gy !== null) c.mesh.position.y = gy;
       }
     }
   }

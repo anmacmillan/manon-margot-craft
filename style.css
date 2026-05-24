@@ -9,6 +9,16 @@
 body {
   margin: 0;
   font-family: 'Minecraft';
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+canvas {
+  display: block;
+  touch-action: none;
 }
 
 h1 {
@@ -358,75 +368,112 @@ h1 {
   padding: 8px 12px;
 }
 
-/* iPad on-screen controls — D-pad + jump/mine/build */
+/* iPad on-screen controls — Bedrock-style move/look split with action buttons */
 #touch-hud {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  inset: 0;
   pointer-events: none;
   z-index: 90;
 }
-#touch-dpad {
+
+.touch-zone {
   position: absolute;
-  bottom: 90px;
-  left: 16px;
-  width: 180px;
-  height: 180px;
+  bottom: 0;
+  width: 50vw;
+  height: 48vh;
+  min-height: 260px;
   pointer-events: auto;
-  display: grid;
-  grid-template-areas:
-    ".    up    ."
-    "left .     right"
-    ".    down  .";
-  grid-template-columns: 60px 60px 60px;
-  grid-template-rows: 60px 60px 60px;
-  gap: 4px;
+  touch-action: none;
 }
-.dpad-btn {
-  width: 60px;
-  height: 60px;
-  background: rgba(15, 23, 42, 0.75);
-  color: white;
-  border: 2px solid rgba(255, 215, 0, 0.6);
-  border-radius: 8px;
-  font-size: 1.4rem;
-  cursor: pointer;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
+
+#touch-left-zone {
+  left: 0;
 }
-.dpad-btn:active { background: rgba(255, 215, 0, 0.8); color: black; }
-#touch-up    { grid-area: up; }
-#touch-down  { grid-area: down; }
-#touch-left  { grid-area: left; }
-#touch-right { grid-area: right; }
+
+#touch-right-zone {
+  right: 0;
+}
+
+.touch-zone-label {
+  position: absolute;
+  bottom: 14px;
+  left: 24px;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.78);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.65);
+  pointer-events: none;
+}
+
+.touch-zone-label.right {
+  left: auto;
+  right: 24px;
+}
+
+#touch-joystick-base {
+  position: absolute;
+  left: 24px;
+  bottom: 42px;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: rgba(15, 23, 42, 0.22);
+  box-shadow: inset 0 0 18px rgba(0,0,0,0.22);
+  pointer-events: none;
+}
+
+#touch-joystick-base.active {
+  background: rgba(15, 23, 42, 0.35);
+  border-color: rgba(255, 215, 0, 0.55);
+}
+
+#touch-joystick-stick {
+  position: absolute;
+  left: 24px;
+  top: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.78);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
 #touch-actions {
   position: absolute;
-  bottom: 90px;
-  right: 16px;
+  right: 18px;
+  bottom: 34px;
   pointer-events: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  align-items: flex-end;
 }
+
 .action-btn {
-  width: 90px;
-  height: 50px;
-  background: rgba(15, 23, 42, 0.75);
+  min-width: 108px;
+  height: 54px;
+  padding: 0 14px;
+  background: rgba(15, 23, 42, 0.8);
   color: white;
   border: 2px solid rgba(255, 215, 0, 0.6);
-  border-radius: 8px;
-  font-size: 0.95rem;
+  border-radius: 14px;
+  font-size: 0.92rem;
   font-weight: bold;
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  touch-action: none;
 }
-.action-btn.red   { border-color: #ff6060; }
-.action-btn.green { border-color: #60ff60; }
-.action-btn:active { background: rgba(255, 215, 0, 0.8); color: black; }
+
+.action-btn.red   { border-color: #ff7b7b; }
+.action-btn.green { border-color: #69ee8e; }
+.action-btn:active,
+.action-btn.active {
+  background: rgba(255, 215, 0, 0.85);
+  color: black;
+}
 
 #mute-btn {
   position: fixed;

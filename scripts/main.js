@@ -8,7 +8,7 @@ import { setupUI } from './ui';
 import { ModelLoader } from './modelLoader';
 import { NetworkManager } from './network';
 import { AvatarEditor } from './avatarEditor.js';
-import { installIpadControls } from './touchControls.js';
+import { installIpadControls, isIpadLike } from './touchControls.js';
 import { CreatureManager } from './creatures.js';
 import { getAmbientAudio } from './ambientAudio.js';
 
@@ -166,33 +166,39 @@ function initLauncher() {
     // Set dynamic instructions list based on selected game mode
     const instructionsList = document.getElementById('instructions-list');
     if (instructionsList) {
-      if (selectedMode === 'creative') {
+      const isTouchDevice = isIpadLike();
+      if (isTouchDevice) {
+        instructionsList.innerHTML = `
+          LEFT THUMB PAD - Move<br>
+          RIGHT SIDE DRAG - Look Around<br>
+          ⛏ BREAK - Break Block<br>
+          PLACE - Place Selected Block<br>
+          JUMP - Jump / Fly Up<br>
+          TAP HOTBAR - Choose Block<br><br>
+        `;
+      } else if (selectedMode === 'creative') {
         instructionsList.innerHTML = `
           WASD / ZQSD / ARROWS - Move<br>
+          MOUSE - Look Around<br>
+          LEFT CLICK - Break<br>
+          RIGHT CLICK - Place<br>
           SPACE - Fly Up<br>
           SHIFT / C / CTRL - Fly Down<br>
-          R - Reset Camera<br>
-          M - Free/Lock Mouse (Trackpad Unlock)<br>
-          U - Toggle UI<br>
-          0 / à / ² / P / X - Pickaxe (No Shift!)<br>
-          1-8 / & to _ - Select Block (Unshifted AZERTY)<br>
-          F1 - Save Game<br>
-          F2 - Load Game<br>
-          F10 - Debug Camera<br><br>
+          WHEEL / 1-8 - Change Block<br>
+          0 / à / ² / P / X - Pickaxe<br>
+          M / ESC - Free Mouse<br><br>
         `;
       } else {
         instructionsList.innerHTML = `
           WASD / ZQSD / ARROWS - Move<br>
+          MOUSE - Look Around<br>
+          LEFT CLICK - Break<br>
+          RIGHT CLICK - Place<br>
           SHIFT - Sprint<br>
           SPACE - Jump<br>
-          R - Reset Camera<br>
-          M - Free/Lock Mouse (Trackpad Unlock)<br>
-          U - Toggle UI<br>
-          0 / à / ² / P / X - Pickaxe (No Shift!)<br>
-          1-8 / & to _ - Select Block (Unshifted AZERTY)<br>
-          F1 - Save Game<br>
-          F2 - Load Game<br>
-          F10 - Debug Camera<br><br>
+          WHEEL / 1-8 - Change Block<br>
+          0 / à / ² / P / X - Pickaxe<br>
+          M / ESC - Free Mouse<br><br>
         `;
       }
     }
