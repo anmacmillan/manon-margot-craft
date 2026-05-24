@@ -8,6 +8,7 @@ import { setupUI } from './ui';
 import { ModelLoader } from './modelLoader';
 import { NetworkManager } from './network';
 import { AvatarEditor } from './avatarEditor.js';
+import { installIpadControls } from './touchControls.js';
 
 
 window.gameStarted = false;
@@ -69,6 +70,9 @@ scene.add(world);
 
 const player = new Player(scene, world);
 const physics = new Physics(scene);
+
+// iPad Safari has no Pointer Lock API — install the trackpad-look fallback if we're on iPad
+installIpadControls(player);
 
 // Initialize Peer-to-Peer Network Manager
 const network = new NetworkManager(scene, world, player);
