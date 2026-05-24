@@ -42,10 +42,11 @@ export function installIpadControls(player) {
   const overlay = document.getElementById('overlay');
   if (overlay) overlay.style.display = 'none';
 
-  // Trackpad-driven look: rotate camera based on raw mousemove deltas.
-  // Cursor stays visible (we can't hide it without pointer lock), but moving
-  // the trackpad anywhere on the game viewport will turn the camera.
-  let lastX = null, lastY = null;
+  // Drag-to-look: only rotate camera while the trackpad button (or finger) is
+  // held down. Previously the camera moved with every cursor twitch, which
+  // Margot found confusing while just trying to walk with WASD.
+  let dragging = false;
+  let lastX = 0, lastY = 0;
   const sensitivity = 0.0035;
 
   const isUiTarget = (el) => el && (
@@ -55,30 +56,48 @@ export function installIpadControls(player) {
     el.closest('#multiplayer-status') ||
     el.closest('#mouse-unlock-hint') ||
     el.closest('#launcher-portal') ||
-    el.closest('#avatar-editor-drawer')
+    el.closest('#avatar-editor-drawer') ||
+    el.closest('#mute-btn')
   );
 
-  document.addEventListener('mousemove', (e) => {
+  document.addEventListener('mousedown', (e) => {
     if (!window.gameStarted) return;
-    if (isUiTarget(e.target)) {
-      lastX = null;
-      lastY = null;
-      return;
-    }
-    if (lastX !== null && lastY !== null) {
-      const dx = e.clientX - lastX;
-      const dy = e.clientY - lastY;
-      const obj = player.controls.getObject();
-      obj.rotation.y -= dx * sensitivity;
-      player.camera.rotation.x -= dy * sensitivity;
-      // Clamp pitch
-      const halfPi = Math.PI / 2 - 0.01;
-      if (player.camera.rotation.x > halfPi)  player.camera.rotation.x = halfPi;
-      if (player.camera.rotation.x < -halfPi) player.camera.rotation.x = -halfPi;
-    }
+    if (isUiTarget(e.target)) return;
+    dragging = true;
     lastX = e.clientX;
     lastY = e.clientY;
+    document.body.style.cursor = 'grabbing';
+  });
+
+  document.addEventListener('mouseup', () => {
+    dragging = false;
+    document.body.style.cursor = '';
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging || !window.gameStarted) return;
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    lastX = e.clientX;
+    lastY = e.clientY;
+
+    const obj = player.controls.getObject();
+    obj.rotation.y -= dx * sensitivity;
+    obj.rotation.z = 0; // never tilt sideways
+    player.camera.rotation.x -= dy * sensitivity;
+    player.camera.rotation.z = 0; // hard-clamp roll so the view can never roll sideways
+    const halfPi = Math.PI / 2 - 0.01;
+    if (player.camera.rotation.x > halfPi)  player.camera.rotation.x = halfPi;
+    if (player.camera.rotation.x < -halfPi) player.camera.rotation.x = -halfPi;
   }, { passive: true });
 
-  console.log('[iPad] Pointer-lock bypass installed — trackpad look enabled');
+  // Belt-and-braces: even when not dragging, kill any accumulated roll each frame
+  setInterval(() => {
+    if (!window.gameStarted) return;
+    if (player.camera.rotation.z !== 0) player.camera.rotation.z = 0;
+    const obj = player.controls.getObject();
+    if (obj.rotation.z !== 0) obj.rotation.z = 0;
+  }, 250);
+
+  console.log('[iPad] Pointer-lock bypass installed — drag-to-look enabled');
 }

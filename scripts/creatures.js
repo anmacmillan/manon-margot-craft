@@ -155,7 +155,10 @@ export class CreatureManager {
    */
   groundY(x, z) {
     const key = `${Math.round(x)}|${Math.round(z)}`;
-    if (this._groundCache.has(key)) return this._groundCache.get(key);
+    const cached = this._groundCache.get(key);
+    // Only trust cached *non-null* results. A cached null may just mean the
+    // chunk wasn't loaded yet — re-scan on every call until we find ground.
+    if (cached != null) return cached;
     for (let y = 40; y > 0; y--) {
       const b = this.world.getBlock(Math.round(x), y, Math.round(z));
       if (b && b.id && b.id !== 0) {
@@ -164,7 +167,6 @@ export class CreatureManager {
         return ground;
       }
     }
-    this._groundCache.set(key, null);
     return null;
   }
 
@@ -274,7 +276,7 @@ export class CreatureManager {
           c.mesh.position.z += (dz / dist) * step;
           // Snap to ground
           const gy = this.groundY(c.mesh.position.x, c.mesh.position.z);
-          if (gy !== null) c.mesh.position.y += (gy - c.mesh.position.y) * 0.2;
+          if (gy !== null) c.mesh.position.y = gy; // hard-snap to ground; no levitation
           c.mesh.rotation.y = Math.atan2(dx, dz);
           // Animate golem arms swinging when walking
           if (c.mesh.userData.parts) {
