@@ -144,25 +144,49 @@ export class CreatureManager {
     this.creatures = [];
 
     this.lastUpdate = 0;
+    this._groundCache = new Map();
+    this._tickAccumulator = 0;
   }
 
   /**
    * Find a grassy / sand-y Y at world (x,z) by scanning down from the build height.
-   * Returns null if no solid block found.
+   * Cached per integer grid cell to avoid per-frame raycast storms (this was crashing
+   * iPad Safari with 24+ creatures).
    */
   groundY(x, z) {
+    const key = `${Math.round(x)}|${Math.round(z)}`;
+    if (this._groundCache.has(key)) return this._groundCache.get(key);
     for (let y = 40; y > 0; y--) {
       const b = this.world.getBlock(Math.round(x), y, Math.round(z));
-      if (b && b.id && b.id !== 0) return y + 1;
+      if (b && b.id && b.id !== 0) {
+        const ground = y + 1;
+        this._groundCache.set(key, ground);
+        return ground;
+      }
     }
+    this._groundCache.set(key, null);
     return null;
+  }
+
+  /** Invalidate cached ground heights when blocks change (called from world block events) */
+  invalidateGroundCache() {
+    this._groundCache.clear();
   }
 
   /**
    * Initial population: scatter ambient animals and spawn one golem per player.
+   * Counts kept small for iPad Safari memory budget (~256MB on older iPads).
    */
   populateInitial() {
-    // 8 sheep, 6 pigs, 10 chickens scattered around spawn
+    const isIpadLike =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    // Heavy desktop default vs lean iPad budget (Manon's iPad is older — keep it tight)
+    const counts = isIpadLike
+      ? { sheep: 2, pig: 1, chicken: 2 }
+      : { sheep: 8, pig: 6, chicken: 10 };
+
     const scatter = (n, builder, type) => {
       for (let i = 0; i < n; i++) {
         const x = -40 + Math.random() * 80;
@@ -172,15 +196,17 @@ export class CreatureManager {
         this.spawnCreature(type, builder(), new THREE.Vector3(x, y, z), { wanderRadius: 12 });
       }
     };
-    scatter(8, buildSheep, 'sheep');
-    scatter(6, buildPig, 'pig');
-    scatter(10, buildChicken, 'chicken');
+    scatter(counts.sheep, buildSheep, 'sheep');
+    scatter(counts.pig, buildPig, 'pig');
+    scatter(counts.chicken, buildChicken, 'chicken');
 
-    // One follower golem
-    const px = this.player.position.x;
-    const pz = this.player.position.z;
-    const gy = this.groundY(px, pz) ?? 32;
-    this.spawnCreature('golem', buildIronGolem(), new THREE.Vector3(px + 3, gy, pz + 3), { follower: true });
+    // One follower golem (skip on iPad — heavy 9-mesh model close to camera)
+    if (!isIpadLike) {
+      const px = this.player.position.x;
+      const pz = this.player.position.z;
+      const gy = this.groundY(px, pz) ?? 32;
+      this.spawnCreature('golem', buildIronGolem(), new THREE.Vector3(px + 3, gy, pz + 3), { follower: true });
+    }
   }
 
   /**
@@ -226,8 +252,14 @@ export class CreatureManager {
 
   /**
    * Per-frame update — simple AI: wander or follow.
+   * Throttled to ~15 Hz to keep iPad CPU + GC pressure low.
    */
   update(dt) {
+    this._tickAccumulator += dt;
+    if (this._tickAccumulator < 0.066) return; // 15 Hz
+    const stepDt = this._tickAccumulator;
+    this._tickAccumulator = 0;
+
     const now = performance.now();
     for (const c of this.creatures) {
       if (c.follower) {
@@ -237,7 +269,7 @@ export class CreatureManager {
         const dz = ppos.z - c.mesh.position.z;
         const dist = Math.hypot(dx, dz);
         if (dist > 5) {
-          const step = 1.5 * dt;
+          const step = 1.5 * stepDt;
           c.mesh.position.x += (dx / dist) * step;
           c.mesh.position.z += (dz / dist) * step;
           // Snap to ground
@@ -273,7 +305,7 @@ export class CreatureManager {
       const dist = Math.hypot(dx, dz);
       if (dist > 0.3) {
         const speed = c.type.startsWith('villager') ? 0.8 : 1.2;
-        const step = speed * dt;
+        const step = speed * stepDt;
         c.mesh.position.x += (dx / dist) * step;
         c.mesh.position.z += (dz / dist) * step;
         const gy = this.groundY(c.mesh.position.x, c.mesh.position.z);

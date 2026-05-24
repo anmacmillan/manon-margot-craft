@@ -241,13 +241,25 @@ function initLauncher() {
       if (portal) portal.classList.add('hidden');
     }
 
-    // Populate ambient animals + follower golem after world is ready (skip for clients — host's creatures are local-only)
+    // Populate ambient animals + follower golem after world is ready (skip for clients — host's creatures are local-only).
+    // Deferred + try/catch'd because creature meshes used to overload iPad Safari at launch.
     if (playMode !== 'client') {
-      setTimeout(() => creatures.populateInitial(), 500);
+      setTimeout(() => {
+        try {
+          creatures.populateInitial();
+        } catch (err) {
+          console.warn('[Creatures] populateInitial failed:', err);
+        }
+      }, 1500);
     }
 
-    // Start ambient music on first user gesture (game launch click counts)
-    getAmbientAudio().resume();
+    // Start ambient music on first user gesture — but skip auto-start on iPad
+    // (Web Audio + creatures + WebRTC was overwhelming older iPads; Manon can tap 🔊 to enable)
+    const isIpad = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (!isIpad) {
+      try { getAmbientAudio().resume(); } catch (err) { console.warn('[Audio] resume failed', err); }
+    }
 
     // Elegant auto-pointerlock transition on game launch!
     player.controls.lock();
@@ -396,7 +408,7 @@ function animate() {
     physics.update(dt, player, world);
     player.update(world);
     world.update(player);
-    creatures.update(dt);
+    try { creatures.update(dt); } catch (err) { /* never let creature AI crash the game */ }
 
     // Position the sun relative to the player to maintain the shadow angle
     sun.position.copy(player.camera.position);

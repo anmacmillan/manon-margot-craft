@@ -29,7 +29,12 @@ export class AmbientAudio {
       console.warn('[Audio] Web Audio not supported');
       return;
     }
-    this.ctx = new AudioCtx();
+    try {
+      this.ctx = new AudioCtx();
+    } catch (err) {
+      console.warn('[Audio] Failed to create AudioContext:', err);
+      return;
+    }
 
     this.master = this.ctx.createGain();
     this.master.gain.value = 0;
