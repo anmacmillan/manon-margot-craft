@@ -10,7 +10,9 @@ const defaultSkins = {
     pantsColor: '#222222', // Charcoal
     shoeColor: '#000000',
     accessory: 'wings',    // Bat wings
-    eyes: 'gothic'         // Goth dark shadow makeup
+    eyes: 'gothic',        // Goth dark shadow makeup
+    hairStyle: 'long',
+    outfit: 'default'
   },
   margot: {
     hairColor: '#ff80b3', // Strawberry pink
@@ -19,9 +21,111 @@ const defaultSkins = {
     pantsColor: '#ff99c8', // Light pink skirt
     shoeColor: '#ffd700',  // Golden shoes
     accessory: 'crown',    // Princess crown
-    eyes: 'princess'       // Sweet blue princess eyes
+    eyes: 'princess',      // Sweet blue princess eyes
+    hairStyle: 'long',
+    outfit: 'princess-gown'
   }
 };
+
+// One-click themed presets — bundle full setting objects
+const themedPresets = [
+  {
+    id: 'wednesday', label: '🖤 Wednesday', tooltip: 'Wednesday Addams',
+    settings: {
+      hairColor: '#0a0a0a', shirtColor: '#0a0a0a', skinColor: '#f5f5f7',
+      pantsColor: '#000000', shoeColor: '#000000',
+      accessory: 'none', eyes: 'gothic', hairStyle: 'braids', outfit: 'wednesday-dress'
+    }
+  },
+  {
+    id: 'eleven', label: '🧪 Eleven', tooltip: 'Stranger Things — Eleven',
+    settings: {
+      hairColor: '#5c3a21', shirtColor: '#ffb3c8', skinColor: '#ffe0cc',
+      pantsColor: '#ffb3c8', shoeColor: '#ffffff',
+      accessory: 'none', eyes: 'standard', hairStyle: 'short', outfit: 'eleven-pink'
+    }
+  },
+  {
+    id: 'sally', label: '🧵 Sally', tooltip: 'Nightmare Before Christmas — Sally',
+    settings: {
+      hairColor: '#b8001f', shirtColor: '#5a8c4a', skinColor: '#c5d8e8',
+      pantsColor: '#3a4f8a', shoeColor: '#1a1a1a',
+      accessory: 'none', eyes: 'gothic', hairStyle: 'sally', outfit: 'sally-patchwork'
+    }
+  },
+  {
+    id: 'jack', label: '💀 Jack', tooltip: 'Nightmare Before Christmas — Jack Skellington',
+    settings: {
+      hairColor: '#000000', shirtColor: '#0a0a0a', skinColor: '#fafafa',
+      pantsColor: '#0a0a0a', shoeColor: '#000000',
+      accessory: 'none', eyes: 'gothic', hairStyle: 'default', outfit: 'jack-pinstripe'
+    }
+  },
+  {
+    id: 'gothic-princess', label: '🦇 Goth Princess', tooltip: 'Bat wings + gothic gown',
+    settings: {
+      hairColor: '#1a0d2e', shirtColor: '#121212', skinColor: '#f5f5f7',
+      pantsColor: '#222222', shoeColor: '#000000',
+      accessory: 'wings', eyes: 'gothic', hairStyle: 'long', outfit: 'default'
+    }
+  },
+  {
+    id: 'pink-princess', label: '👑 Princess', tooltip: 'Pink crown princess',
+    settings: {
+      hairColor: '#ff80b3', shirtColor: '#ff3385', skinColor: '#ffe6ea',
+      pantsColor: '#ff99c8', shoeColor: '#ffd700',
+      accessory: 'crown', eyes: 'princess', hairStyle: 'long', outfit: 'princess-gown'
+    }
+  },
+  {
+    id: 'mermaid-queen', label: '🧜‍♀️ Mermaid', tooltip: 'Sparkling sea queen',
+    settings: {
+      hairColor: '#40e0d0', shirtColor: '#008080', skinColor: '#ffe0cc',
+      pantsColor: '#20b2aa', shoeColor: '#ffa500',
+      accessory: 'starfish', eyes: 'mermaid', hairStyle: 'long', outfit: 'mermaid-tail'
+    }
+  },
+  {
+    id: 'galaxy-mage', label: '🌌 Galaxy', tooltip: 'Cosmic wizard',
+    settings: {
+      hairColor: '#d3a4ff', shirtColor: '#1d0c42', skinColor: '#e3d8f8',
+      pantsColor: '#0b0424', shoeColor: '#ffb3ff',
+      accessory: 'hat', eyes: 'galaxy', hairStyle: 'long', outfit: 'default'
+    }
+  },
+  {
+    id: 'fairy', label: '🧚‍♀️ Fairy', tooltip: 'Translucent wings + petal dress',
+    settings: {
+      hairColor: '#fce181', shirtColor: '#ff80b3', skinColor: '#ffe6ea',
+      pantsColor: '#ffb3c8', shoeColor: '#ffd700',
+      accessory: 'fairy-wings', eyes: 'princess', hairStyle: 'ponytail', outfit: 'fairy-dress'
+    }
+  },
+  {
+    id: 'witch', label: '🧙‍♀️ Witch', tooltip: 'Witch robes + hat',
+    settings: {
+      hairColor: '#1a0d2e', shirtColor: '#0a0014', skinColor: '#f5f5f7',
+      pantsColor: '#0a0014', shoeColor: '#000000',
+      accessory: 'hat', eyes: 'gothic', hairStyle: 'long', outfit: 'witch-robes'
+    }
+  },
+  {
+    id: 'angel', label: '😇 Angel', tooltip: 'White feathered wings',
+    settings: {
+      hairColor: '#fce181', shirtColor: '#ffffff', skinColor: '#ffe6ea',
+      pantsColor: '#f0f0f0', shoeColor: '#ffd700',
+      accessory: 'angel-wings', eyes: 'princess', hairStyle: 'long', outfit: 'default'
+    }
+  },
+  {
+    id: 'dragon', label: '🐉 Dragon Rider', tooltip: 'Red dragon wings',
+    settings: {
+      hairColor: '#a8001a', shirtColor: '#400008', skinColor: '#ffe0cc',
+      pantsColor: '#1a0000', shoeColor: '#400008',
+      accessory: 'dragon-wings', eyes: 'gothic', hairStyle: 'ponytail', outfit: 'default'
+    }
+  }
+];
 
 export class AvatarEditor {
   constructor(playerType, onSaveCallback) {
@@ -110,10 +214,39 @@ export class AvatarEditor {
     const accessories = [
       { id: 'none', name: 'None' },
       { id: 'wings', name: '🦇 Bat Wings' },
+      { id: 'fairy-wings', name: '🧚 Fairy Wings' },
+      { id: 'angel-wings', name: '😇 Angel Wings' },
+      { id: 'dragon-wings', name: '🐉 Dragon Wings' },
       { id: 'crown', name: '👑 Gold Crown' },
       { id: 'hat', name: '🧙‍♀️ Wizard Hat' },
       { id: 'starfish', name: '🌟 Starfish' },
       { id: 'wand', name: '🪄 Glowing Wand' }
+    ];
+
+    const hairStyles = [
+      { id: 'default', name: 'Default' },
+      { id: 'long', name: '💁‍♀️ Long' },
+      { id: 'short', name: '✂️ Short' },
+      { id: 'ponytail', name: '🎀 Ponytail' },
+      { id: 'pigtails', name: '👧 Pigtails' },
+      { id: 'braids', name: '🖤 Braids' },
+      { id: 'bun', name: '🎯 Bun' },
+      { id: 'fringe-long', name: '💇 Long + Fringe' },
+      { id: 'fringe-bob', name: '💇‍♀️ Bob + Fringe' },
+      { id: 'side-fringe', name: '🌬 Side Fringe' },
+      { id: 'sally', name: '🧵 Sally (Long Red)' }
+    ];
+
+    const outfits = [
+      { id: 'default', name: 'Default' },
+      { id: 'princess-gown', name: '👗 Princess Gown' },
+      { id: 'mermaid-tail', name: '🧜‍♀️ Mermaid Tail' },
+      { id: 'witch-robes', name: '🧙‍♀️ Witch Robes' },
+      { id: 'wednesday-dress', name: '🖤 Wednesday Dress' },
+      { id: 'eleven-pink', name: '🌸 Pink Frilly' },
+      { id: 'fairy-dress', name: '🌷 Fairy Petals' },
+      { id: 'sally-patchwork', name: '🧵 Sally Patchwork' },
+      { id: 'jack-pinstripe', name: '💀 Jack Pinstripe' }
     ];
 
     drawer.innerHTML = `
@@ -130,6 +263,16 @@ export class AvatarEditor {
           <div class="preview-tip">Avatar rotates slowly to show wings/crown!</div>
         </div>
         <div class="drawer-right">
+          <!-- One-click Presets -->
+          <div class="option-group">
+            <h3>⚡ Quick Presets</h3>
+            <div class="grid-buttons" id="group-preset">
+              ${themedPresets.map(p => `
+                <button class="grid-btn preset-btn" data-value="${p.id}" title="${p.tooltip}">${p.label}</button>
+              `).join('')}
+            </div>
+          </div>
+
           <!-- Skin Tone -->
           <div class="option-group">
             <h3>🌸 Skin Tone</h3>
@@ -148,10 +291,32 @@ export class AvatarEditor {
             <h3>💇‍♀️ Hair Color</h3>
             <div class="swatch-row" id="group-hair">
               ${hairColors.map(c => `
-                <div class="swatch-circle ${this.settings.hairColor === c.color ? 'active' : ''}" 
-                     style="background-color: ${c.color};" 
-                     data-value="${c.color}" 
+                <div class="swatch-circle ${this.settings.hairColor === c.color ? 'active' : ''}"
+                     style="background-color: ${c.color};"
+                     data-value="${c.color}"
                      title="${c.name}"></div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Hairstyle -->
+          <div class="option-group">
+            <h3>✂️ Hairstyle</h3>
+            <div class="grid-buttons" id="group-hairstyle">
+              ${hairStyles.map(h => `
+                <button class="grid-btn ${this.settings.hairStyle === h.id ? 'active' : ''}"
+                        data-value="${h.id}">${h.name}</button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Outfit / Gown -->
+          <div class="option-group">
+            <h3>👗 Gown / Outfit</h3>
+            <div class="grid-buttons" id="group-outfit">
+              ${outfits.map(o => `
+                <button class="grid-btn ${this.settings.outfit === o.id ? 'active' : ''}"
+                        data-value="${o.id}">${o.name}</button>
               `).join('')}
             </div>
           </div>
@@ -215,6 +380,58 @@ export class AvatarEditor {
     this.bindSwatchGroup('group-fabric', 'shirtColor');
     this.bindGridBtnGroup('group-eyes', 'eyes');
     this.bindGridBtnGroup('group-accessory', 'accessory');
+    this.bindGridBtnGroup('group-hairstyle', 'hairStyle');
+    this.bindGridBtnGroup('group-outfit', 'outfit');
+    this.bindPresetGroup('group-preset');
+  }
+
+  /**
+   * One-click preset application — overwrites all settings then refreshes selection highlights
+   */
+  bindPresetGroup(groupId) {
+    const container = document.getElementById(groupId);
+    if (!container) return;
+
+    container.addEventListener('click', (e) => {
+      const btn = e.target.closest('.grid-btn');
+      if (!btn) return;
+
+      const presetId = btn.getAttribute('data-value');
+      const preset = themedPresets.find(p => p.id === presetId);
+      if (!preset) return;
+
+      // Apply full preset settings bundle
+      Object.assign(this.settings, preset.settings);
+
+      // Refresh active highlights across all swatches and grid buttons
+      this.refreshActiveStates();
+      this.updatePreviewAvatar();
+    });
+  }
+
+  /**
+   * Refresh visual active-state classes after a preset is applied
+   */
+  refreshActiveStates() {
+    const setActive = (groupId, key, attr = 'data-value') => {
+      const container = document.getElementById(groupId);
+      if (!container) return;
+      container.querySelectorAll('.swatch-circle, .grid-btn').forEach(el => {
+        if (el.classList.contains('preset-btn')) return;
+        if (el.getAttribute(attr) === this.settings[key]) {
+          el.classList.add('active');
+        } else {
+          el.classList.remove('active');
+        }
+      });
+    };
+    setActive('group-skin', 'skinColor');
+    setActive('group-hair', 'hairColor');
+    setActive('group-fabric', 'shirtColor');
+    setActive('group-eyes', 'eyes');
+    setActive('group-accessory', 'accessory');
+    setActive('group-hairstyle', 'hairStyle');
+    setActive('group-outfit', 'outfit');
   }
 
   /**

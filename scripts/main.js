@@ -188,14 +188,28 @@ function initLauncher() {
     }
 
     // Network Mode Setup
-    if (playMode === 'host') {
+    if (playMode === 'coop') {
+      // Auto-coop: first sister to click becomes host (claims shared lobby ID),
+      // second sister detects the unavailable-id error and joins as client.
+      // The host pre-generates the world so the client has something to sync against.
+      const loaded = world.load();
+      if (!loaded) {
+        world.generate(true);
+      }
+      network.init('auto', playerType);
+
+      // Hide launcher portal — the status banner takes over until connect resolves
+      const portal = document.getElementById('launcher-portal');
+      if (portal) portal.classList.add('hidden');
+
+    } else if (playMode === 'host') {
       // Auto-load host's previous world, generate fresh terrain only if no save file exists
       const loaded = world.load();
       if (!loaded) {
-        world.generate(true); 
+        world.generate(true);
       }
       network.init('host', playerType);
-      
+
       // Hide launcher portal (revealing the 3D canvas and instructions overlay)
       const portal = document.getElementById('launcher-portal');
       if (portal) portal.classList.add('hidden');
@@ -243,13 +257,9 @@ function initLauncher() {
     e.stopPropagation();
     launchGame('manon', 'solo');
   });
-  document.getElementById('launch-manon-host')?.addEventListener('click', (e) => {
+  document.getElementById('launch-manon-coop')?.addEventListener('click', (e) => {
     e.stopPropagation();
-    launchGame('manon', 'host');
-  });
-  document.getElementById('launch-manon-join')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    launchGame('manon', 'client');
+    launchGame('manon', 'coop');
   });
 
   // Bind Buttons: Margot
@@ -257,13 +267,9 @@ function initLauncher() {
     e.stopPropagation();
     launchGame('margot', 'solo');
   });
-  document.getElementById('launch-margot-host')?.addEventListener('click', (e) => {
+  document.getElementById('launch-margot-coop')?.addEventListener('click', (e) => {
     e.stopPropagation();
-    launchGame('margot', 'host');
-  });
-  document.getElementById('launch-margot-join')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    launchGame('margot', 'client');
+    launchGame('margot', 'coop');
   });
 
   // Bind Floating Magic Spawner Sidebar buttons

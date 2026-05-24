@@ -15,6 +15,8 @@ export function buildAvatar(name, skin) {
   let shoeColor = '#241a0f';
   let accessoryType = 'none';
   let faceStyle = 'standard';
+  let hairStyle = 'default';
+  let outfitStyle = 'default';
 
   // Handle stringified JSON skin objects
   let skinObj = skin;
@@ -35,6 +37,8 @@ export function buildAvatar(name, skin) {
     shoeColor = skinObj.shoeColor || shoeColor;
     accessoryType = skinObj.accessory || 'none';
     faceStyle = skinObj.eyes || 'standard';
+    hairStyle = skinObj.hairStyle || 'default';
+    outfitStyle = skinObj.outfit || 'default';
   } else {
     // Presets
     if (name === 'manon') {
@@ -411,19 +415,34 @@ export function buildAvatar(name, skin) {
   let starfishMesh = null;
   let wandMesh = null;
 
-  // A. GOTHIC BAT WINGS (Manon's Special Gothic Skin or Custom Accessory)
-  if (skinObj === 'gothic' || accessoryType === 'wings') {
+  // A. WINGS — multiple style variants (bat / fairy / angel / dragon)
+  const wingVariant = (skinObj === 'gothic') ? 'wings' :
+                      (['wings', 'fairy-wings', 'angel-wings', 'dragon-wings'].includes(accessoryType) ? accessoryType : null);
+
+  if (wingVariant) {
+    const palettes = {
+      'wings':         { main: '#090014', rib: '#2d004d', emissive: '#000000', opacity: 1.0 },   // Gothic bat
+      'fairy-wings':   { main: '#ffb3ff', rib: '#ff66cc', emissive: '#330033', opacity: 0.55 },  // Translucent pink fairy
+      'angel-wings':   { main: '#fafafa', rib: '#e0e0e0', emissive: '#222222', opacity: 1.0 },   // White feathered
+      'dragon-wings':  { main: '#a8001a', rib: '#400008', emissive: '#1a0000', opacity: 1.0 }    // Red leathery dragon
+    };
+    const palette = palettes[wingVariant];
+
     wingGroup = new THREE.Group();
     wingGroup.name = 'wings';
+    wingGroup.userData.variant = wingVariant;
     wingGroup.position.set(0, 0.15, -0.13); // Mount behind body
 
     // Left Wing
     const leftWing = new THREE.Group();
     leftWing.position.set(-0.1, 0, 0);
-    
-    // Custom voxel/panel batwing shapes
-    const mainWingMat = new THREE.MeshStandardMaterial({ color: '#090014', roughness: 0.9, side: THREE.DoubleSide });
-    const wingRibMat = new THREE.MeshStandardMaterial({ color: '#2d004d', roughness: 0.7 });
+
+    const mainWingMat = new THREE.MeshStandardMaterial({
+      color: palette.main, roughness: 0.9, side: THREE.DoubleSide,
+      emissive: palette.emissive,
+      transparent: palette.opacity < 1, opacity: palette.opacity
+    });
+    const wingRibMat = new THREE.MeshStandardMaterial({ color: palette.rib, roughness: 0.7 });
 
     const lPanel1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.03), mainWingMat);
     lPanel1.position.set(-0.175, 0.05, 0);
@@ -464,7 +483,7 @@ export function buildAvatar(name, skin) {
     wingGroup.add(rightWing);
 
     // Retain references for animation
-    wingGroup.userData = { leftWing, rightWing };
+    wingGroup.userData = { leftWing, rightWing, variant: wingVariant };
     avatarGroup.add(wingGroup);
   }
 
@@ -673,6 +692,265 @@ export function buildAvatar(name, skin) {
     rightArm.add(wandMesh); // Child of right arm
   }
 
+  // F. HAIRSTYLE — extra hair mesh attached to head so it rotates with the head
+  let hairGroup = null;
+  if (hairStyle && hairStyle !== 'default') {
+    hairGroup = new THREE.Group();
+    hairGroup.name = 'hairStyle';
+    const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.9 });
+
+    if (hairStyle === 'long') {
+      // Long curtain of hair down the back + sides
+      const back = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.08), hairMat);
+      back.position.set(0, -0.18, -0.22);
+      hairGroup.add(back);
+      const lSide = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.55, 0.45), hairMat);
+      lSide.position.set(-0.22, -0.1, -0.02);
+      hairGroup.add(lSide);
+      const rSide = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.55, 0.45), hairMat);
+      rSide.position.set(0.22, -0.1, -0.02);
+      hairGroup.add(rSide);
+    } else if (hairStyle === 'ponytail') {
+      const tieMat = new THREE.MeshStandardMaterial({ color: '#000000', roughness: 0.4 });
+      const tie = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.06, 0.16), tieMat);
+      tie.position.set(0, 0.08, -0.26);
+      hairGroup.add(tie);
+      const tail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.5, 0.12), hairMat);
+      tail.position.set(0, -0.18, -0.27);
+      hairGroup.add(tail);
+    } else if (hairStyle === 'pigtails') {
+      const tieMat = new THREE.MeshStandardMaterial({ color: '#ff66cc', roughness: 0.4 });
+      [-1, 1].forEach((side) => {
+        const tie = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.08), tieMat);
+        tie.position.set(0.26 * side, 0.06, 0);
+        hairGroup.add(tie);
+        const tail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.32, 0.1), hairMat);
+        tail.position.set(0.3 * side, -0.13, 0);
+        hairGroup.add(tail);
+      });
+    } else if (hairStyle === 'braids') {
+      // Wednesday Addams braids — two long thin black plaits down the front
+      [-1, 1].forEach((side) => {
+        const top = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.18, 0.07), hairMat);
+        top.position.set(0.22 * side, -0.06, 0.18);
+        hairGroup.add(top);
+        const mid = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.18, 0.08), hairMat);
+        mid.position.set(0.22 * side, -0.22, 0.2);
+        hairGroup.add(mid);
+        const tip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.12, 0.05), hairMat);
+        tip.position.set(0.22 * side, -0.36, 0.21);
+        hairGroup.add(tip);
+        const bowMat = new THREE.MeshStandardMaterial({ color: '#1a1a1a' });
+        const bow = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.04, 0.05), bowMat);
+        bow.position.set(0.22 * side, -0.43, 0.22);
+        hairGroup.add(bow);
+      });
+    } else if (hairStyle === 'bun') {
+      const bun = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), hairMat);
+      bun.position.set(0, 0.18, -0.1);
+      hairGroup.add(bun);
+    } else if (hairStyle === 'short') {
+      // Eleven (Stranger Things) — close-cropped helmet of hair around the head
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.18, 0.52), hairMat);
+      cap.position.set(0, 0.15, 0);
+      hairGroup.add(cap);
+      const fringe = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.06), hairMat);
+      fringe.position.set(0, 0.06, 0.22);
+      hairGroup.add(fringe);
+    } else if (hairStyle === 'fringe-long') {
+      // Long hair with a thick front fringe (bangs) across the forehead
+      const back = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.08), hairMat);
+      back.position.set(0, -0.18, -0.22);
+      hairGroup.add(back);
+      const lSide = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.55, 0.45), hairMat);
+      lSide.position.set(-0.22, -0.1, -0.02);
+      hairGroup.add(lSide);
+      const rSide = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.55, 0.45), hairMat);
+      rSide.position.set(0.22, -0.1, -0.02);
+      hairGroup.add(rSide);
+      // Heavy fringe across the forehead
+      const fringe = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.14, 0.08), hairMat);
+      fringe.position.set(0, 0.12, 0.22);
+      hairGroup.add(fringe);
+    } else if (hairStyle === 'fringe-bob') {
+      // Chin-length bob with a straight fringe
+      const helmet = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.4, 0.54), hairMat);
+      helmet.position.set(0, -0.02, 0);
+      hairGroup.add(helmet);
+      const fringe = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.08), hairMat);
+      fringe.position.set(0, 0.12, 0.22);
+      hairGroup.add(fringe);
+    } else if (hairStyle === 'side-fringe') {
+      // Asymmetric side-swept fringe + medium hair
+      const back = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.45, 0.08), hairMat);
+      back.position.set(0, -0.04, -0.22);
+      hairGroup.add(back);
+      const lSide = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 0.45), hairMat);
+      lSide.position.set(-0.22, -0.02, -0.02);
+      hairGroup.add(lSide);
+      const rSide = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 0.45), hairMat);
+      rSide.position.set(0.22, -0.02, -0.02);
+      hairGroup.add(rSide);
+      // Slanted side-fringe
+      const fringe = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.1, 0.07), hairMat);
+      fringe.position.set(-0.07, 0.13, 0.22);
+      fringe.rotation.z = -0.35;
+      hairGroup.add(fringe);
+    } else if (hairStyle === 'sally') {
+      // Sally (Nightmare Before Christmas) — long red rag-doll hair
+      const sallyMat = new THREE.MeshStandardMaterial({ color: '#b8001f', roughness: 0.95 });
+      const back = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.85, 0.08), sallyMat);
+      back.position.set(0, -0.28, -0.22);
+      hairGroup.add(back);
+      const lSide = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.65, 0.45), sallyMat);
+      lSide.position.set(-0.22, -0.18, -0.02);
+      hairGroup.add(lSide);
+      const rSide = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.65, 0.45), sallyMat);
+      rSide.position.set(0.22, -0.18, -0.02);
+      hairGroup.add(rSide);
+      const fringe = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.12, 0.08), sallyMat);
+      fringe.position.set(0, 0.12, 0.22);
+      hairGroup.add(fringe);
+    }
+
+    headMesh.add(hairGroup);
+  }
+
+  // G. OUTFIT OVERLAY — full gown/dress meshes replacing the plain torso/legs look
+  let outfitGroup = null;
+  if (outfitStyle && outfitStyle !== 'default') {
+    outfitGroup = new THREE.Group();
+    outfitGroup.name = 'outfit';
+
+    if (outfitStyle === 'princess-gown') {
+      // Wide flared skirt
+      const skirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.5 });
+      const top = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.2, 0.3), skirtMat);
+      top.position.set(0, -0.36, 0);
+      outfitGroup.add(top);
+      const mid = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.2, 0.45), skirtMat);
+      mid.position.set(0, -0.55, 0);
+      outfitGroup.add(mid);
+      const hem = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.2, 0.6), skirtMat);
+      hem.position.set(0, -0.75, 0);
+      outfitGroup.add(hem);
+      // Gold trim at the hem
+      const trim = new THREE.Mesh(new THREE.BoxGeometry(0.97, 0.05, 0.62),
+        new THREE.MeshStandardMaterial({ color: '#ffd700', metalness: 0.8, roughness: 0.2 }));
+      trim.position.set(0, -0.86, 0);
+      outfitGroup.add(trim);
+    } else if (outfitStyle === 'mermaid-tail') {
+      const tailMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.4, metalness: 0.5 });
+      const upper = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.45, 0.26), tailMat);
+      upper.position.set(0, -0.45, 0);
+      outfitGroup.add(upper);
+      const lower = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.32, 0.18), tailMat);
+      lower.position.set(0, -0.85, 0);
+      outfitGroup.add(lower);
+      // Fin
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.05, 0.4), tailMat);
+      fin.position.set(0, -1.04, 0);
+      outfitGroup.add(fin);
+    } else if (outfitStyle === 'witch-robes') {
+      const robeMat = new THREE.MeshStandardMaterial({ color: '#0a0014', roughness: 0.95 });
+      const top = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.3, 0.3), robeMat);
+      top.position.set(0, -0.3, 0);
+      outfitGroup.add(top);
+      const flow = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.45, 0.5), robeMat);
+      flow.position.set(0, -0.66, 0);
+      outfitGroup.add(flow);
+      // Tattered hem strips
+      for (let i = -3; i <= 3; i++) {
+        const tatter = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.18, 0.08), robeMat);
+        tatter.position.set(i * 0.12, -0.95, 0.2);
+        outfitGroup.add(tatter);
+      }
+    } else if (outfitStyle === 'wednesday-dress') {
+      // Wednesday Addams — black dress with white peter-pan collar
+      const dressMat = new THREE.MeshStandardMaterial({ color: '#0a0a0a', roughness: 0.9 });
+      const collarMat = new THREE.MeshStandardMaterial({ color: '#fafafa', roughness: 0.6 });
+      const collar = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.1, 0.28), collarMat);
+      collar.position.set(0, 0.36, 0.01);
+      outfitGroup.add(collar);
+      const top = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.4, 0.26), dressMat);
+      top.position.set(0, -0.18, 0);
+      outfitGroup.add(top);
+      const skirt = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.35, 0.36), dressMat);
+      skirt.position.set(0, -0.58, 0);
+      outfitGroup.add(skirt);
+      const hem = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.05, 0.4), collarMat);
+      hem.position.set(0, -0.78, 0);
+      outfitGroup.add(hem);
+    } else if (outfitStyle === 'eleven-pink') {
+      // Stranger Things Eleven — pink frilly dress
+      const pinkMat = new THREE.MeshStandardMaterial({ color: '#ffb3c8', roughness: 0.7 });
+      const top = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.4, 0.26), pinkMat);
+      top.position.set(0, -0.18, 0);
+      outfitGroup.add(top);
+      const skirt = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.18, 0.4), pinkMat);
+      skirt.position.set(0, -0.45, 0);
+      outfitGroup.add(skirt);
+      const frill = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.06, 0.45),
+        new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.6 }));
+      frill.position.set(0, -0.56, 0);
+      outfitGroup.add(frill);
+    } else if (outfitStyle === 'sally-patchwork') {
+      // Sally's patchwork rag-doll dress — colourful patches
+      const patches = ['#5a8c4a', '#8a3a3a', '#3a4f8a', '#a87bc7', '#c9a44a', '#6e6e6e'];
+      const patchAt = (x, y, z, w, h, d, colorIdx) => {
+        const mat = new THREE.MeshStandardMaterial({ color: patches[colorIdx % patches.length], roughness: 0.9 });
+        const patch = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+        patch.position.set(x, y, z);
+        outfitGroup.add(patch);
+      };
+      // Bodice in 4 patches
+      patchAt(-0.13, -0.05, 0.13, 0.26, 0.36, 0.02, 0);
+      patchAt(0.13, -0.05, 0.13, 0.26, 0.36, 0.02, 1);
+      patchAt(-0.13, -0.05, -0.13, 0.26, 0.36, 0.02, 2);
+      patchAt(0.13, -0.05, -0.13, 0.26, 0.36, 0.02, 3);
+      // Skirt in 6 patches
+      patchAt(-0.18, -0.5, 0.16, 0.32, 0.4, 0.02, 4);
+      patchAt(0.18, -0.5, 0.16, 0.32, 0.4, 0.02, 5);
+      patchAt(-0.18, -0.5, -0.16, 0.32, 0.4, 0.02, 0);
+      patchAt(0.18, -0.5, -0.16, 0.32, 0.4, 0.02, 1);
+      patchAt(0, -0.5, 0.21, 0.6, 0.4, 0.02, 2);
+      patchAt(0, -0.5, -0.21, 0.6, 0.4, 0.02, 3);
+    } else if (outfitStyle === 'jack-pinstripe') {
+      // Jack Skellington's pinstripe suit — black with thin white vertical stripes + bow tie
+      const suitMat = new THREE.MeshStandardMaterial({ color: '#0a0a0a', roughness: 0.9 });
+      const stripeMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.6 });
+      const top = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.74, 0.28), suitMat);
+      top.position.set(0, -0.05, 0);
+      outfitGroup.add(top);
+      // Vertical white pinstripes
+      for (let i = -2; i <= 2; i++) {
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.74, 0.295), stripeMat);
+        stripe.position.set(i * 0.1, -0.05, 0);
+        outfitGroup.add(stripe);
+      }
+      // Long tailcoat at bottom
+      const tail = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.26), suitMat);
+      tail.position.set(0, -0.55, -0.05);
+      outfitGroup.add(tail);
+      // Bat-shaped bow tie
+      const bowMat = new THREE.MeshStandardMaterial({ color: '#000000', roughness: 0.6 });
+      const bow = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.07, 0.05), bowMat);
+      bow.position.set(0, 0.35, 0.15);
+      outfitGroup.add(bow);
+    } else if (outfitStyle === 'fairy-dress') {
+      const petalMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.6, transparent: true, opacity: 0.85 });
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2;
+        const petal = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.32, 0.05), petalMat);
+        petal.position.set(Math.cos(angle) * 0.18, -0.45, Math.sin(angle) * 0.18);
+        petal.rotation.y = -angle;
+        outfitGroup.add(petal);
+      }
+    }
+
+    avatarGroup.add(outfitGroup);
+  }
+
   // --- 5. VISIBILITY LAYERS ---
   // Ensure the entire avatar group casts and receives shadows recursively and gets glossy standard material properties
   avatarGroup.traverse((child) => {
@@ -711,7 +989,9 @@ export function buildAvatar(name, skin) {
     crown: crownMesh,
     hat: wizardHatGroup,
     starfish: starfishMesh,
-    wand: wandMesh
+    wand: wandMesh,
+    hairStyle: hairGroup,
+    outfit: outfitGroup
   };
 }
 

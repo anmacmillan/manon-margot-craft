@@ -91,6 +91,19 @@ export class World extends THREE.Group {
           break;
       }
     });
+
+    // Auto-save every 30 seconds so the girls never lose their builds
+    setInterval(() => {
+      if (window.gameStarted) this.save();
+    }, 30000);
+
+    // Save when the tab is hidden / closed / iPad backgrounded
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden' && window.gameStarted) this.save();
+    });
+    window.addEventListener('beforeunload', () => {
+      if (window.gameStarted) this.save();
+    });
   }
 
   /**

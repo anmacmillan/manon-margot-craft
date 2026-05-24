@@ -50,10 +50,16 @@ export class NetworkManager {
     statusEl.classList.remove('hidden');
     statusEl.innerHTML = `Initializing Multiplayer...`;
 
+    // AUTO mode: shared lobby ID — first sister to click becomes host, second becomes client
+    if (role === 'auto') {
+      this.initAuto();
+      return;
+    }
+
     // 1. Generate unique peer IDs
     // Host has a well-known clash-free ID, client gets auto-generated ID to prevent peer collisions
     const hostPeerId = `manon-margot-craft-${this.playerName}-lobby`;
-    
+
     if (this.isHost) {
       statusEl.innerHTML = `Hosting Co-op on Wifi...<br><span style="font-size:0.65em;color:#ffd700;">Waiting for your sister to join...</span>`;
       this.peer = new Peer(hostPeerId);
@@ -113,6 +119,72 @@ export class NetworkManager {
         }, 1500);
       });
     }
+  }
+
+  /**
+   * Auto-coop mode — try to claim the shared lobby ID; whoever gets it is host, the other joins
+   */
+  initAuto() {
+    const statusEl = document.getElementById('multiplayer-status');
+    const sharedRoomId = 'manon-margot-craft-coop-lobby-v2';
+
+    statusEl.innerHTML = `Looking for your sister...<br><span style="font-size:0.7em;color:#ffd700;">(Whoever clicks first hosts — the other joins automatically.)</span>`;
+
+    // Try to claim the shared ID first (become host if available)
+    this.peer = new Peer(sharedRoomId);
+    let resolved = false;
+
+    this.peer.on('open', (id) => {
+      if (resolved) return;
+      resolved = true;
+      // We successfully claimed the shared ID — we are the host
+      this.isHost = true;
+      this.role = 'host';
+      console.log(`[Auto] Claimed shared lobby ${id} — running as HOST`);
+      statusEl.innerHTML = `<span style="color:#ffd700;">Hosting Co-op!</span><br><span style="font-size:0.7em;color:#fff;">Waiting for ${this.sisterName.toUpperCase()} to join...</span>`;
+
+      this.peer.on('connection', (connection) => {
+        if (this.isConnected) {
+          connection.on('open', () => {
+            connection.send({ type: 'reject', reason: 'Lobby full' });
+            setTimeout(() => connection.close(), 500);
+          });
+          return;
+        }
+        this.conn = connection;
+        this.setupConnection();
+      });
+    });
+
+    this.peer.on('error', (err) => {
+      console.log('[Auto] Peer error:', err.type, err);
+      if (err.type === 'unavailable-id' && !resolved) {
+        resolved = true;
+        // Shared ID is taken — someone else is hosting, so we become the client
+        this.peer.destroy();
+        this.isHost = false;
+        this.role = 'client';
+        console.log('[Auto] Lobby occupied — running as CLIENT');
+        statusEl.innerHTML = `<span style="color:#8be3db;">Found your sister! Joining...</span>`;
+
+        this.peer = new Peer();
+        this.peer.on('open', () => {
+          console.log('[Auto] Client peer ready, connecting to shared lobby');
+          const connection = this.peer.connect(sharedRoomId, { reliable: true });
+          this.conn = connection;
+          this.setupConnection();
+        });
+        this.peer.on('error', (clientErr) => {
+          console.error('[Auto] Client error:', clientErr);
+          statusEl.innerHTML = `<span style="color:#ff4d4d;">Could not reach your sister. Try again in a few seconds.</span>`;
+          setTimeout(() => window.location.reload(), 3000);
+        });
+      } else if (!resolved) {
+        console.error('[Auto] Unrecoverable error:', err);
+        statusEl.innerHTML = `<span style="color:#ff4d4d;">Connection error: ${err.type}</span>`;
+        setTimeout(() => window.location.reload(), 3000);
+      }
+    });
   }
 
   /**

@@ -343,6 +343,19 @@ h1 {
   padding: 8px 12px;
 }
 
+.card-actions .big-coop-btn {
+  font-size: 1.1rem;
+  padding: 14px 16px;
+  margin-top: 6px;
+  box-shadow: 0 0 24px rgba(255, 215, 0, 0.6);
+  animation: coopPulse 2.4s infinite ease-in-out;
+}
+
+@keyframes coopPulse {
+  0%, 100% { box-shadow: 0 0 24px rgba(255, 215, 0, 0.6); transform: scale(1); }
+  50%      { box-shadow: 0 0 36px rgba(255, 215, 0, 0.95); transform: scale(1.02); }
+}
+
 /* FLOATING MULTIPLAYER STATUS HUD */
 #multiplayer-status {
   position: fixed;
