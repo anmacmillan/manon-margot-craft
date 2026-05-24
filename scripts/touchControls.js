@@ -16,32 +16,32 @@
 
 export function isIpadLike() {
   const ua = navigator.userAgent;
-  // iPadOS 13+ reports the desktop Mac user agent, so also check touch points.
-  return /iPad|iPhone|iPod/.test(ua) ||
-         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ||
-         (typeof window !== 'undefined' && 'ontouchstart' in window) ||
-         (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
+  // iPadOS 13+ reports the desktop Mac user agent, so detect via touch points.
+  // Real Macs report maxTouchPoints = 0; iPads report 5. Use > 2 as a safe threshold.
+  if (/iPad|iPhone|iPod/.test(ua)) return true;
+  if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 2) return true;
+  return false;
 }
 
 export function installIpadControls(player) {
-  // ALWAYS install the on-screen D-pad now — Margot needs it to be visible regardless
-  // of UA detection. The pointer-lock bypass logic still only kicks in on actual
-  // touch devices, but the buttons render everywhere as a safety net.
   const isTouch = isIpadLike();
-
-  if (isTouch) {
-    // Make controls.isLocked always read as true once the game has started.
-    Object.defineProperty(player.controls, 'isLocked', {
-      configurable: true,
-      get: () => !!window.gameStarted
-    });
-    player.controls.lock = () => {
-      player.controls.dispatchEvent({ type: 'lock' });
-    };
-    player.controls.unlock = () => {};
-    const overlay = document.getElementById('overlay');
-    if (overlay) overlay.style.display = 'none';
+  if (!isTouch) {
+    // Real desktop — leave PointerLockControls + WASD to do their job, no on-screen HUD.
+    console.log('[TouchControls] Desktop detected — leaving pointer lock intact');
+    return;
   }
+
+  // Pointer-lock bypass: only used on real touch devices (already gated by the early-return above).
+  Object.defineProperty(player.controls, 'isLocked', {
+    configurable: true,
+    get: () => !!window.gameStarted
+  });
+  player.controls.lock = () => {
+    player.controls.dispatchEvent({ type: 'lock' });
+  };
+  player.controls.unlock = () => {};
+  const overlay = document.getElementById('overlay');
+  if (overlay) overlay.style.display = 'none';
 
   // ---------------- On-screen D-pad + action buttons ----------------
   // Margot doesn't love walking with the keyboard either — tap controls.
@@ -99,12 +99,6 @@ export function installIpadControls(player) {
   document.getElementById('touch-place')?.addEventListener('mousedown', (e) => {
     e.preventDefault(); fireSyntheticMouse(2);
   });
-
-  if (!isTouch) {
-    // Desktop with a real mouse — let PointerLockControls do its thing, no drag-to-look needed.
-    console.log('[TouchControls] D-pad rendered; pointer-lock left intact on desktop');
-    return;
-  }
 
   // Drag-to-look: only rotate camera while the trackpad button (or finger) is
   // held down. Previously the camera moved with every cursor twitch, which
