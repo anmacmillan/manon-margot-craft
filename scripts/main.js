@@ -241,6 +241,26 @@ function initLauncher() {
       if (portal) portal.classList.add('hidden');
     }
 
+    // Spawn the player on real ground rather than y=32 (the hard-coded default
+    // dropped them in the sky on Margot's iPad — she'd freefall and the camera
+    // could roll unpredictably while falling).
+    if (playMode !== 'client') {
+      const findGround = (x, z) => {
+        const SKY_BLOCKS = new Set([9, 17]);
+        for (let y = 40; y > 0; y--) {
+          const b = world.getBlock(Math.round(x), y, Math.round(z));
+          if (b && b.id && b.id !== 0 && !SKY_BLOCKS.has(b.id)) return y + 1;
+        }
+        return null;
+      };
+      const sx = player.position.x;
+      const sz = player.position.z;
+      const sy = findGround(sx, sz);
+      if (sy !== null) {
+        player.position.y = sy + 2.5; // 2.5 above ground so they land softly, not inside it
+      }
+    }
+
     // Populate ambient animals + follower golem after world is ready (skip for clients — host's creatures are local-only).
     // Deferred + try/catch'd because creature meshes used to overload iPad Safari at launch.
     if (playMode !== 'client') {
@@ -408,6 +428,13 @@ function animate() {
     physics.update(dt, player, world);
     player.update(world);
     world.update(player);
+
+    // Hard-clamp camera roll every frame — Margot's view was tilting sideways
+    // and there are several code paths that could set z; killing it here is bullet-proof.
+    if (player.camera.rotation.z !== 0) player.camera.rotation.z = 0;
+    const _yawObj = player.controls.getObject?.();
+    if (_yawObj && _yawObj.rotation.z !== 0) _yawObj.rotation.z = 0;
+
     try { creatures.update(dt); } catch (err) { /* never let creature AI crash the game */ }
 
     // Position the sun relative to the player to maintain the shadow angle
