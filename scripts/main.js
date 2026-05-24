@@ -9,6 +9,7 @@ import { ModelLoader } from './modelLoader';
 import { NetworkManager } from './network';
 import { AvatarEditor } from './avatarEditor.js';
 import { installIpadControls } from './touchControls.js';
+import { CreatureManager } from './creatures.js';
 
 
 window.gameStarted = false;
@@ -73,6 +74,10 @@ const physics = new Physics(scene);
 
 // iPad Safari has no Pointer Lock API — install the trackpad-look fallback if we're on iPad
 installIpadControls(player);
+
+// Wandering animals, villagers, follower golem
+const creatures = new CreatureManager(scene, world, player);
+window.creatures = creatures;
 
 // Initialize Peer-to-Peer Network Manager
 const network = new NetworkManager(scene, world, player);
@@ -229,10 +234,15 @@ function initLauncher() {
       if (!loaded) {
         world.generate(true);
       }
-      
+
       // Hide launcher portal (revealing the 3D canvas and instructions overlay)
       const portal = document.getElementById('launcher-portal');
       if (portal) portal.classList.add('hidden');
+    }
+
+    // Populate ambient animals + follower golem after world is ready (skip for clients — host's creatures are local-only)
+    if (playMode !== 'client') {
+      setTimeout(() => creatures.populateInitial(), 500);
     }
 
     // Elegant auto-pointerlock transition on game launch!
@@ -304,6 +314,11 @@ function initLauncher() {
   bindSpawnerBtn('spawn-pegasus-stables', 'pegasus-stables');
   bindSpawnerBtn('spawn-rainbow-bridge', 'rainbow-bridge');
   bindSpawnerBtn('spawn-greek-temple', 'greek-temple');
+  bindSpawnerBtn('spawn-hogwarts-tower', 'hogwarts-tower');
+  bindSpawnerBtn('spawn-treehouse-village', 'treehouse-village');
+  bindSpawnerBtn('spawn-dragon-lair', 'dragon-lair');
+  bindSpawnerBtn('spawn-ice-castle', 'ice-castle');
+  bindSpawnerBtn('spawn-mushroom-kingdom', 'mushroom-kingdom');
 }
 
 if (document.readyState === 'loading') {
@@ -361,6 +376,7 @@ function animate() {
     physics.update(dt, player, world);
     player.update(world);
     world.update(player);
+    creatures.update(dt);
 
     // Position the sun relative to the player to maintain the shadow angle
     sun.position.copy(player.camera.position);

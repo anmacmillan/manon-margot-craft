@@ -855,9 +855,184 @@ export class World extends THREE.Group {
       tempQueue.push({ action: 'add', x: originX - 1, y: originY + 2, z: originZ - l + 3, blockId: 10 }); // Side marble
       tempQueue.push({ action: 'add', x: originX + 1, y: originY + 2, z: originZ - l + 3, blockId: 10 }); // Side marble
       tempQueue.push({ action: 'add', x: originX, y: originY + 3, z: originZ - l + 3, blockId: 8 }); // Golden sand block
+
+    } else if (type === 'hogwarts-tower') {
+      // Hogwarts-style wizard tower — tall cylindrical stone tower with conical roof + flag
+      const height = 18;
+      const radius = 3;
+      for (let dy = 0; dy <= height; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          for (let dz = -radius; dz <= radius; dz++) {
+            const dist = Math.hypot(dx, dz);
+            if (dist >= radius - 0.5 && dist <= radius + 0.5) {
+              tempQueue.push({ action: 'add', x: originX + dx, y: originY + dy, z: originZ + dz, blockId: 3 }); // Stone walls
+            }
+            // Windows at 4 levels
+            if (dy === 5 || dy === 9 || dy === 13) {
+              if ((Math.abs(dx) === radius && dz === 0) || (Math.abs(dz) === radius && dx === 0)) {
+                tempQueue.push({ action: 'remove', x: originX + dx, y: originY + dy, z: originZ + dz });
+              }
+            }
+          }
+        }
+      }
+      // Conical roof in coal (dark slate)
+      for (let dy = 0; dy <= 4; dy++) {
+        const r = Math.max(0, radius - dy);
+        for (let dx = -r; dx <= r; dx++) {
+          for (let dz = -r; dz <= r; dz++) {
+            if (Math.hypot(dx, dz) <= r + 0.3) {
+              tempQueue.push({ action: 'add', x: originX + dx, y: originY + height + 1 + dy, z: originZ + dz, blockId: 4 });
+            }
+          }
+        }
+      }
+      // Flag pole + golden flag
+      for (let dy = 1; dy <= 4; dy++) tempQueue.push({ action: 'add', x: originX, y: originY + height + 5 + dy, z: originZ, blockId: 6 });
+      tempQueue.push({ action: 'add', x: originX + 1, y: originY + height + 8, z: originZ, blockId: 8 });
+      tempQueue.push({ action: 'add', x: originX + 2, y: originY + height + 8, z: originZ, blockId: 8 });
+      tempQueue.push({ action: 'add', x: originX + 1, y: originY + height + 7, z: originZ, blockId: 8 });
+
+    } else if (type === 'treehouse-village') {
+      // Cluster of 4 treehouses on giant tree trunks
+      const positions = [[0, 0], [8, 3], [-5, 6], [4, -7]];
+      positions.forEach(([ox, oz], i) => {
+        const trunkH = 6 + i;
+        // Trunk
+        for (let dy = 0; dy <= trunkH; dy++) {
+          tempQueue.push({ action: 'add', x: originX + ox, y: originY + dy, z: originZ + oz, blockId: 6 });
+          tempQueue.push({ action: 'add', x: originX + ox + 1, y: originY + dy, z: originZ + oz, blockId: 6 });
+        }
+        // Platform
+        for (let dx = -2; dx <= 2; dx++) {
+          for (let dz = -2; dz <= 2; dz++) {
+            tempQueue.push({ action: 'add', x: originX + ox + dx, y: originY + trunkH + 1, z: originZ + oz + dz, blockId: 6 });
+          }
+        }
+        // House walls
+        for (let dy = 2; dy <= 4; dy++) {
+          for (let dx = -2; dx <= 2; dx++) {
+            for (let dz = -2; dz <= 2; dz++) {
+              if (Math.abs(dx) === 2 || Math.abs(dz) === 2) {
+                tempQueue.push({ action: 'add', x: originX + ox + dx, y: originY + trunkH + dy, z: originZ + oz + dz, blockId: 6 });
+              }
+            }
+          }
+        }
+        // Leaf roof
+        for (let dx = -3; dx <= 3; dx++) {
+          for (let dz = -3; dz <= 3; dz++) {
+            tempQueue.push({ action: 'add', x: originX + ox + dx, y: originY + trunkH + 5, z: originZ + oz + dz, blockId: 7 });
+          }
+        }
+      });
+
+    } else if (type === 'dragon-lair') {
+      // Volcanic crater + dragon bone pile in centre
+      // Crater rim
+      for (let dx = -8; dx <= 8; dx++) {
+        for (let dz = -8; dz <= 8; dz++) {
+          const dist = Math.hypot(dx, dz);
+          if (dist > 6 && dist <= 8) {
+            for (let dy = 0; dy <= 3; dy++) {
+              tempQueue.push({ action: 'add', x: originX + dx, y: originY + dy, z: originZ + dz, blockId: 3 });
+            }
+          }
+        }
+      }
+      // Lava floor (use iron ore for glowy red)
+      for (let dx = -5; dx <= 5; dx++) {
+        for (let dz = -5; dz <= 5; dz++) {
+          if (Math.hypot(dx, dz) <= 5) {
+            tempQueue.push({ action: 'add', x: originX + dx, y: originY, z: originZ + dz, blockId: 5 });
+          }
+        }
+      }
+      // Bone pile (sand colour, irregular)
+      const bones = [[0, 0, 1], [1, 0, 1], [-1, 0, 1], [0, 1, 1], [2, 0, 0], [-2, 0, 0],
+                     [0, 0, -1], [1, 1, 0], [-1, 1, 0], [0, 2, 0]];
+      bones.forEach(([dx, dy, dz]) => {
+        tempQueue.push({ action: 'add', x: originX + dx, y: originY + 1 + dy, z: originZ + dz, blockId: 8 });
+      });
+      // Treasure (gold = sand)
+      for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * Math.PI * 2;
+        const r = 3.5;
+        tempQueue.push({ action: 'add', x: originX + Math.round(Math.cos(ang) * r), y: originY + 1, z: originZ + Math.round(Math.sin(ang) * r), blockId: 8 });
+      }
+
+    } else if (type === 'ice-castle') {
+      // Frozen ice castle — Elsa-style
+      const w = 6, l = 8, h = 5;
+      // Floor (snow)
+      for (let dx = -w; dx <= w; dx++) {
+        for (let dz = -l; dz <= l; dz++) {
+          tempQueue.push({ action: 'add', x: originX + dx, y: originY, z: originZ + dz, blockId: 10 });
+        }
+      }
+      // Walls (snow/marble)
+      for (let dy = 1; dy <= h; dy++) {
+        for (let dx = -w; dx <= w; dx++) {
+          for (let dz = -l; dz <= l; dz++) {
+            if (Math.abs(dx) === w || Math.abs(dz) === l) {
+              tempQueue.push({ action: 'add', x: originX + dx, y: originY + dy, z: originZ + dz, blockId: 10 });
+            }
+          }
+        }
+      }
+      // Spire towers at four corners
+      [[w, l], [-w, l], [w, -l], [-w, -l]].forEach(([cx, cz]) => {
+        for (let dy = 1; dy <= h + 6; dy++) {
+          tempQueue.push({ action: 'add', x: originX + cx, y: originY + dy, z: originZ + cz, blockId: 10 });
+        }
+        // Crystal tip (iron ore for sparkle)
+        tempQueue.push({ action: 'add', x: originX + cx, y: originY + h + 7, z: originZ + cz, blockId: 5 });
+      });
+      // Central crystal chandelier
+      for (let dy = 1; dy <= 3; dy++) {
+        tempQueue.push({ action: 'add', x: originX, y: originY + h + dy, z: originZ, blockId: 5 });
+      }
+
+    } else if (type === 'mushroom-kingdom') {
+      // Three giant mushroom houses with hollow rooms
+      const mushrooms = [[0, 0, 5], [6, 0, 0, 4], [-5, 0, 4, 6]];
+      mushrooms.forEach(([ox, oy, oz, size = 5]) => {
+        const stemH = size;
+        // Stem (sand for off-white)
+        for (let dy = 0; dy <= stemH; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            for (let dz = -1; dz <= 1; dz++) {
+              if (Math.hypot(dx, dz) <= 1.5) {
+                tempQueue.push({ action: 'add', x: originX + ox + dx, y: originY + dy, z: originZ + oz + dz, blockId: 8 });
+              }
+            }
+          }
+        }
+        // Cap (red mushroom — use iron ore for red)
+        const capR = size;
+        for (let dy = 0; dy <= Math.floor(capR / 2); dy++) {
+          const r = capR - dy;
+          for (let dx = -r; dx <= r; dx++) {
+            for (let dz = -r; dz <= r; dz++) {
+              if (Math.hypot(dx, dz) <= r + 0.3 && Math.hypot(dx, dz) >= r - 1) {
+                tempQueue.push({ action: 'add', x: originX + ox + dx, y: originY + stemH + 1 + dy, z: originZ + oz + dz, blockId: 5 });
+              }
+            }
+          }
+        }
+        // White spots
+        tempQueue.push({ action: 'add', x: originX + ox + 1, y: originY + stemH + 2, z: originZ + oz, blockId: 10 });
+        tempQueue.push({ action: 'add', x: originX + ox, y: originY + stemH + 2, z: originZ + oz + 1, blockId: 10 });
+        tempQueue.push({ action: 'add', x: originX + ox - 1, y: originY + stemH + 2, z: originZ + oz, blockId: 10 });
+      });
     }
 
     // Append to existing building queue
     this.blockQueue.push(...tempQueue);
+
+    // Spawn villagers for this structure (independent of the block flush)
+    if (window.creatures && window.creatures.spawnVillagersAt) {
+      window.creatures.spawnVillagersAt(type, originX, originY, originZ);
+    }
   }
 }

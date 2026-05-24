@@ -62,6 +62,22 @@ const themedPresets = [
     }
   },
   {
+    id: 'elsa', label: '❄️ Elsa', tooltip: 'Frozen — Elsa, Snow Queen',
+    settings: {
+      hairColor: '#f5e6b3', shirtColor: '#a8d8e8', skinColor: '#fff0e6',
+      pantsColor: '#c0dfe8', shoeColor: '#e0f0f8',
+      accessory: 'fairy-wings', eyes: 'princess', hairStyle: 'fringe-long', outfit: 'princess-gown'
+    }
+  },
+  {
+    id: 'anna', label: '🌹 Anna', tooltip: 'Frozen — Anna of Arendelle',
+    settings: {
+      hairColor: '#cc4a1a', shirtColor: '#3d5a3d', skinColor: '#ffdfb8',
+      pantsColor: '#7a2a4a', shoeColor: '#3a1a1a',
+      accessory: 'none', eyes: 'princess', hairStyle: 'braids', outfit: 'princess-gown'
+    }
+  },
+  {
     id: 'gothic-princess', label: '🦇 Goth Princess', tooltip: 'Bat wings + gothic gown',
     settings: {
       hairColor: '#1a0d2e', shirtColor: '#121212', skinColor: '#f5f5f7',
