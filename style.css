@@ -358,6 +358,76 @@ h1 {
   padding: 8px 12px;
 }
 
+/* iPad on-screen controls — D-pad + jump/mine/build */
+#touch-hud {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 90;
+}
+#touch-dpad {
+  position: absolute;
+  bottom: 90px;
+  left: 16px;
+  width: 180px;
+  height: 180px;
+  pointer-events: auto;
+  display: grid;
+  grid-template-areas:
+    ".    up    ."
+    "left .     right"
+    ".    down  .";
+  grid-template-columns: 60px 60px 60px;
+  grid-template-rows: 60px 60px 60px;
+  gap: 4px;
+}
+.dpad-btn {
+  width: 60px;
+  height: 60px;
+  background: rgba(15, 23, 42, 0.75);
+  color: white;
+  border: 2px solid rgba(255, 215, 0, 0.6);
+  border-radius: 8px;
+  font-size: 1.4rem;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.dpad-btn:active { background: rgba(255, 215, 0, 0.8); color: black; }
+#touch-up    { grid-area: up; }
+#touch-down  { grid-area: down; }
+#touch-left  { grid-area: left; }
+#touch-right { grid-area: right; }
+#touch-actions {
+  position: absolute;
+  bottom: 90px;
+  right: 16px;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.action-btn {
+  width: 90px;
+  height: 50px;
+  background: rgba(15, 23, 42, 0.75);
+  color: white;
+  border: 2px solid rgba(255, 215, 0, 0.6);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: bold;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.action-btn.red   { border-color: #ff6060; }
+.action-btn.green { border-color: #60ff60; }
+.action-btn:active { background: rgba(255, 215, 0, 0.8); color: black; }
+
 #mute-btn {
   position: fixed;
   top: 16px;

@@ -156,12 +156,13 @@ export class CreatureManager {
   groundY(x, z) {
     const key = `${Math.round(x)}|${Math.round(z)}`;
     const cached = this._groundCache.get(key);
-    // Only trust cached *non-null* results. A cached null may just mean the
-    // chunk wasn't loaded yet — re-scan on every call until we find ground.
     if (cached != null) return cached;
+    // Skip clouds (id 9) and glass (id 17) when scanning down so animals
+    // don't get placed on top of a cloud bank and end up "levitating".
+    const SKY_BLOCKS = new Set([9, 17]);
     for (let y = 40; y > 0; y--) {
       const b = this.world.getBlock(Math.round(x), y, Math.round(z));
-      if (b && b.id && b.id !== 0) {
+      if (b && b.id && b.id !== 0 && !SKY_BLOCKS.has(b.id)) {
         const ground = y + 1;
         this._groundCache.set(key, ground);
         return ground;

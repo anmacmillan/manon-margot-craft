@@ -42,6 +42,63 @@ export function installIpadControls(player) {
   const overlay = document.getElementById('overlay');
   if (overlay) overlay.style.display = 'none';
 
+  // ---------------- On-screen D-pad + action buttons ----------------
+  // Margot doesn't love walking with the keyboard either — tap controls.
+  const hud = document.createElement('div');
+  hud.id = 'touch-hud';
+  hud.innerHTML = `
+    <div id="touch-dpad">
+      <button id="touch-up"    class="dpad-btn">▲</button>
+      <button id="touch-left"  class="dpad-btn">◀</button>
+      <button id="touch-down"  class="dpad-btn">▼</button>
+      <button id="touch-right" class="dpad-btn">▶</button>
+    </div>
+    <div id="touch-actions">
+      <button id="touch-jump"  class="action-btn">JUMP</button>
+      <button id="touch-mine"  class="action-btn red">MINE</button>
+      <button id="touch-place" class="action-btn green">BUILD</button>
+    </div>
+  `;
+  document.body.appendChild(hud);
+
+  const bindHold = (id, code) => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    const press = (e) => { e.preventDefault(); player.keysPressed[code] = true; };
+    const release = (e) => { e.preventDefault(); delete player.keysPressed[code]; };
+    btn.addEventListener('touchstart', press, { passive: false });
+    btn.addEventListener('touchend', release, { passive: false });
+    btn.addEventListener('touchcancel', release, { passive: false });
+    btn.addEventListener('mousedown', press);
+    btn.addEventListener('mouseup', release);
+    btn.addEventListener('mouseleave', release);
+  };
+  bindHold('touch-up',    'KeyW');
+  bindHold('touch-down',  'KeyS');
+  bindHold('touch-left',  'KeyA');
+  bindHold('touch-right', 'KeyD');
+  bindHold('touch-jump',  'Space');
+
+  // Mine / Build = synthetic mousedown on canvas with respective button
+  const fireSyntheticMouse = (button) => {
+    const canvas = window.renderer?.domElement || document.querySelector('canvas');
+    const ev = new MouseEvent('mousedown', { bubbles: true, button, clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 });
+    Object.defineProperty(ev, 'target', { value: canvas });
+    document.dispatchEvent(ev);
+  };
+  document.getElementById('touch-mine')?.addEventListener('touchstart', (e) => {
+    e.preventDefault(); fireSyntheticMouse(0);
+  }, { passive: false });
+  document.getElementById('touch-place')?.addEventListener('touchstart', (e) => {
+    e.preventDefault(); fireSyntheticMouse(2);
+  }, { passive: false });
+  document.getElementById('touch-mine')?.addEventListener('mousedown', (e) => {
+    e.preventDefault(); fireSyntheticMouse(0);
+  });
+  document.getElementById('touch-place')?.addEventListener('mousedown', (e) => {
+    e.preventDefault(); fireSyntheticMouse(2);
+  });
+
   // Drag-to-look: only rotate camera while the trackpad button (or finger) is
   // held down. Previously the camera moved with every cursor twitch, which
   // Margot found confusing while just trying to walk with WASD.
@@ -57,7 +114,8 @@ export function installIpadControls(player) {
     el.closest('#mouse-unlock-hint') ||
     el.closest('#launcher-portal') ||
     el.closest('#avatar-editor-drawer') ||
-    el.closest('#mute-btn')
+    el.closest('#mute-btn') ||
+    el.closest('#touch-hud')
   );
 
   document.addEventListener('mousedown', (e) => {
