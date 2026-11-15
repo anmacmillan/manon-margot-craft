@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { buildAvatar, updateAvatarAnimations } from './avatar.js';
+import { FirebaseLink } from './firebaseLink.js';
 
 export class NetworkManager {
   constructor(scene, world, player) {
@@ -126,64 +127,19 @@ export class NetworkManager {
    */
   initAuto() {
     const statusEl = document.getElementById('multiplayer-status');
-    const sharedRoomId = 'manon-margot-craft-coop-lobby-v2';
-
     statusEl.innerHTML = `Looking for your sister...<br><span style="font-size:0.7em;color:#ffd700;">(Whoever clicks first hosts — the other joins automatically.)</span>`;
-
-    // Try to claim the shared ID first (become host if available)
-    this.peer = new Peer(sharedRoomId);
-    let resolved = false;
-
-    this.peer.on('open', (id) => {
-      if (resolved) return;
-      resolved = true;
-      // We successfully claimed the shared ID — we are the host
-      this.isHost = true;
-      this.role = 'host';
-      console.log(`[Auto] Claimed shared lobby ${id} — running as HOST`);
-      statusEl.innerHTML = `<span style="color:#ffd700;">Hosting Co-op!</span><br><span style="font-size:0.7em;color:#fff;">Waiting for ${this.sisterName.toUpperCase()} to join...</span>`;
-
-      this.peer.on('connection', (connection) => {
-        if (this.isConnected) {
-          connection.on('open', () => {
-            connection.send({ type: 'reject', reason: 'Lobby full' });
-            setTimeout(() => connection.close(), 500);
-          });
-          return;
-        }
-        this.conn = connection;
-        this.setupConnection();
-      });
-    });
-
-    this.peer.on('error', (err) => {
-      console.log('[Auto] Peer error:', err.type, err);
-      if (err.type === 'unavailable-id' && !resolved) {
-        resolved = true;
-        // Shared ID is taken — someone else is hosting, so we become the client
-        this.peer.destroy();
-        this.isHost = false;
-        this.role = 'client';
-        console.log('[Auto] Lobby occupied — running as CLIENT');
-        statusEl.innerHTML = `<span style="color:#8be3db;">Found your sister! Joining...</span>`;
-
-        this.peer = new Peer();
-        this.peer.on('open', () => {
-          console.log('[Auto] Client peer ready, connecting to shared lobby');
-          const connection = this.peer.connect(sharedRoomId, { reliable: true });
-          this.conn = connection;
-          this.setupConnection();
-        });
-        this.peer.on('error', (clientErr) => {
-          console.error('[Auto] Client error:', clientErr);
-          statusEl.innerHTML = `<span style="color:#ff4d4d;">Could not reach your sister. Try again in a few seconds.</span>`;
-          setTimeout(() => window.location.reload(), 3000);
-        });
-      } else if (!resolved) {
-        console.error('[Auto] Unrecoverable error:', err);
-        statusEl.innerHTML = `<span style="color:#ff4d4d;">Connection error: ${err.type}</span>`;
-        setTimeout(() => window.location.reload(), 3000);
-      }
+    // The link runs through the family Firebase database (scripts/firebaseLink.js): no direct connection between the two iPads is needed.
+    const link = new FirebaseLink(this.playerName);
+    this.conn = link; this.setupConnection();
+    link.start().then(isHost => {
+      this.isHost = isHost; this.role = isHost ? 'host' : 'client';
+      console.log(`[Auto] Firebase link up — running as ${this.role.toUpperCase()}`);
+      statusEl.innerHTML = isHost
+        ? `<span style="color:#ffd700;">Hosting Co-op!</span><br><span style="font-size:0.7em;color:#fff;">Waiting for ${this.sisterName.toUpperCase()} to join...</span>`
+        : `<span style="color:#8be3db;">Found your sister! Joining...</span>`;
+    }).catch(err => {
+      console.error('[Auto] Could not reach the game server:', err);
+      statusEl.innerHTML = `<span style="color:#ff4d4d;">Could not reach the game server. Check the wifi and try again.</span>`;
     });
   }
 
@@ -262,6 +218,7 @@ export class NetworkManager {
 
         // Regenerate the client's world meshes using host's parameters
         this.world.generate(true);
+        window.landPlayer?.();
         
         // Spawn host's avatar
         this.spawnRemoteAvatar(data.hostName, data.avatarSkin || 'standard');
@@ -344,6 +301,7 @@ export class NetworkManager {
       if (this.peer) {
         this.peer.destroy();
       }
+      if (this.conn && this.conn.close) this.conn.close();
       // Unlock pointer and show portal
       this.player.controls.unlock();
       const portal = document.getElementById('launcher-portal');

@@ -84,6 +84,20 @@ window.creatures = creatures;
 const network = new NetworkManager(scene, world, player);
 window.network = network; // Expose globally for player block placement hook
 
+// Set the player down on the ground near the middle of the world, on grass if there is any close by,
+// so a game opens on land and not hanging in the fog high above it. Waits for the land to be built.
+function landPlayer(tries = 0) {
+  const top = (x, z) => { for (let y = world.chunkSize.height - 1; y >= 0; y--) { const b = world.getBlock(x, y, z); if (b && b.id) return [y, b.id]; } return null; };
+  let best = null;
+  for (let r = 0; r <= 56; r += 4) for (let a = 0; a < (r ? 8 : 1); a++) {
+    const x = Math.floor(32 + r * Math.cos(a * Math.PI / 4)), z = Math.floor(32 + r * Math.sin(a * Math.PI / 4)), t = top(x, z); if (!t) continue;
+    const score = r + (t[1] === 1 ? 0 : 200); if (!best || score < best.score) best = { x, z, y: t[0], score };
+  }
+  if (best) { player.position.set(best.x + 0.5, best.y + 3, best.z + 0.5); if (player.velocity) player.velocity.set(0, 0, 0); }
+  else if (tries < 25) setTimeout(() => landPlayer(tries + 1), 300);
+}
+window.landPlayer = landPlayer;
+
 // Initialize Launcher Card Listeners
 function initLauncher() {
   const launchGame = (playerType, playMode = 'solo') => {
@@ -213,6 +227,7 @@ function initLauncher() {
         world.generate(true);
       }
       network.init('auto', playerType);
+      landPlayer();
 
       // Hide launcher portal — the status banner takes over until connect resolves
       const portal = document.getElementById('launcher-portal');
@@ -225,6 +240,7 @@ function initLauncher() {
         world.generate(true);
       }
       network.init('host', playerType);
+      landPlayer();
 
       // Hide launcher portal (revealing the 3D canvas and instructions overlay)
       const portal = document.getElementById('launcher-portal');
@@ -241,6 +257,7 @@ function initLauncher() {
       if (!loaded) {
         world.generate(true);
       }
+      landPlayer();
 
       // Hide launcher portal (revealing the 3D canvas and instructions overlay)
       const portal = document.getElementById('launcher-portal');
