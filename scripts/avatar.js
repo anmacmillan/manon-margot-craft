@@ -3,6 +3,28 @@ import * as THREE from 'three';
 /**
  * Procedural Pixel-Art Avatar Builder for ManonCraft and MargotCraft
  */
+// ---- The gift box: outfits given to the girls outright. Nothing in this game is bought. ----
+// Each is built from boxes over the plain torso and legs, like the gowns below (y = 0 is the middle of the chest, the hem of a short skirt about -0.62).
+const giftBox = (g, w, h, d, x, y, z, color, o = {}) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.6 }, o))); m.position.set(x, y, z); g.add(m); return m; };
+const pleats = (g, y, w, d, colA, colB, n = 7) => { for (let i = 0; i < n; i++) giftBox(g, w / n + 0.004, 0.24, d, -w / 2 + (i + 0.5) * w / n, y, 0, i % 2 ? colB : colA); };
+const GIFT_OUTFITS = {
+  // stage outfit: a cropped silver jacket that catches the light, pink pleated skirt, a sparkle belt
+  'kpop-stage': (g, c) => { giftBox(g, 0.56, 0.34, 0.32, 0, 0.1, 0, '#e8e8f4', { metalness: 0.9, roughness: 0.25 }); giftBox(g, 0.1, 0.34, 0.33, -0.12, 0.1, 0, c, { metalness: 0.4 }); giftBox(g, 0.1, 0.34, 0.33, 0.12, 0.1, 0, c, { metalness: 0.4 });
+    giftBox(g, 0.58, 0.06, 0.34, 0, -0.28, 0, '#ffd700', { metalness: 1, roughness: 0.2 }); pleats(g, -0.44, 0.72, 0.44, c, '#ffffff'); },
+  // pastel idol: an oversized hoodie and a white tennis skirt
+  'kpop-pastel': (g, c) => { giftBox(g, 0.66, 0.56, 0.38, 0, 0.0, 0, c); giftBox(g, 0.3, 0.14, 0.4, 0, -0.14, 0.01, '#ffffff'); giftBox(g, 0.5, 0.16, 0.24, 0, 0.36, -0.12, c); pleats(g, -0.44, 0.7, 0.42, '#ffffff', '#f0f0f8'); },
+  // dark concept: black leather with silver studs, red tartan skirt, a chain
+  'kpop-dark': (g, c) => { giftBox(g, 0.58, 0.5, 0.33, 0, 0.04, 0, '#101014', { roughness: 0.3, metalness: 0.3 }); for (const x of [-0.2, -0.07, 0.07, 0.2]) giftBox(g, 0.04, 0.04, 0.02, x, 0.2, 0.17, '#d8d8e0', { metalness: 1, roughness: 0.2 });
+    pleats(g, -0.44, 0.72, 0.44, '#b3001b', '#141414'); giftBox(g, 0.3, 0.025, 0.02, 0.14, -0.36, 0.23, '#c8c8d0', { metalness: 1, roughness: 0.2 }); },
+  // school look: navy blazer, white collar, striped tie, grey pleats
+  'kpop-school': (g, c) => { giftBox(g, 0.58, 0.54, 0.33, 0, 0.02, 0, '#1c2a52'); giftBox(g, 0.2, 0.3, 0.02, 0, 0.12, 0.17, '#ffffff'); giftBox(g, 0.06, 0.3, 0.02, 0, 0.08, 0.185, c); giftBox(g, 0.07, 0.07, 0.02, -0.18, 0.12, 0.17, '#ffd700', { metalness: 1, roughness: 0.3 }); pleats(g, -0.44, 0.7, 0.42, '#8a8f9c', '#6f7480'); },
+  // hanbok: a short jacket with its long ribbon, and a full skirt from high on the chest to the feet
+  'hanbok': (g, c) => { giftBox(g, 0.6, 0.26, 0.34, 0, 0.18, 0, '#fff4e0'); giftBox(g, 0.05, 0.5, 0.02, 0.07, -0.02, 0.19, '#c2185b'); giftBox(g, 0.16, 0.05, 0.02, 0.02, 0.2, 0.19, '#c2185b');
+    giftBox(g, 0.62, 0.22, 0.38, 0, -0.06, 0, c); giftBox(g, 0.8, 0.26, 0.5, 0, -0.3, 0, c); giftBox(g, 0.98, 0.26, 0.62, 0, -0.56, 0, c); giftBox(g, 1.08, 0.24, 0.7, 0, -0.8, 0, c); giftBox(g, 1.1, 0.04, 0.72, 0, -0.93, 0, '#ffd700', { metalness: 0.8, roughness: 0.3 }); },
+  // gold sequins for the last song of the concert
+  'popstar-gold': (g, c) => { giftBox(g, 0.56, 0.5, 0.32, 0, 0.04, 0, '#f4c430', { metalness: 1, roughness: 0.22 }); giftBox(g, 0.66, 0.2, 0.4, 0, -0.34, 0, '#f4c430', { metalness: 1, roughness: 0.22 }); giftBox(g, 0.78, 0.18, 0.48, 0, -0.52, 0, '#ffe066', { metalness: 1, roughness: 0.3 }); giftBox(g, 0.6, 0.05, 0.34, 0, -0.22, 0, c, { metalness: 0.6 }); },
+};
+
 export function buildAvatar(name, skin) {
   const avatarGroup = new THREE.Group();
   avatarGroup.name = `${name}-avatar`;
@@ -822,7 +844,9 @@ export function buildAvatar(name, skin) {
     outfitGroup = new THREE.Group();
     outfitGroup.name = 'outfit';
 
-    if (outfitStyle === 'princess-gown') {
+    if (GIFT_OUTFITS[outfitStyle]) {
+      GIFT_OUTFITS[outfitStyle](outfitGroup, shirtColor);
+    } else if (outfitStyle === 'princess-gown') {
       // Wide flared skirt
       const skirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.5 });
       const top = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.2, 0.3), skirtMat);

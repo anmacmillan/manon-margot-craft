@@ -29,6 +29,19 @@ const defaultSkins = {
 
 // One-click themed presets — bundle full setting objects
 const themedPresets = [
+  // 🎁 The gift box: given, never bought
+  { id: 'kpop-stage', label: '🎁 K-pop Stage', tooltip: 'Silver jacket, pink pleats, gold belt',
+    settings: { hairColor: '#ff7ac8', shirtColor: '#ff5fa2', skinColor: '#ffe0cc', pantsColor: '#ffffff', shoeColor: '#ffffff', accessory: 'none', eyes: 'princess', hairStyle: 'ponytail', outfit: 'kpop-stage' } },
+  { id: 'kpop-pastel', label: '🎁 K-pop Pastel', tooltip: 'Oversized hoodie and tennis skirt',
+    settings: { hairColor: '#b9a6ff', shirtColor: '#bfe3ff', skinColor: '#ffe6ea', pantsColor: '#ffffff', shoeColor: '#ffd6e8', accessory: 'none', eyes: 'princess', hairStyle: 'fringe-long', outfit: 'kpop-pastel' } },
+  { id: 'kpop-dark', label: '🎁 K-pop Dark', tooltip: 'Leather, studs and tartan',
+    settings: { hairColor: '#0a0a0a', shirtColor: '#b3001b', skinColor: '#f5f5f7', pantsColor: '#101014', shoeColor: '#000000', accessory: 'none', eyes: 'gothic', hairStyle: 'side-fringe', outfit: 'kpop-dark' } },
+  { id: 'kpop-school', label: '🎁 School Idol', tooltip: 'Blazer, tie and pleats',
+    settings: { hairColor: '#3b2a20', shirtColor: '#c2185b', skinColor: '#ffe0cc', pantsColor: '#ffffff', shoeColor: '#1c1c1c', accessory: 'none', eyes: 'standard', hairStyle: 'fringe-bob', outfit: 'kpop-school' } },
+  { id: 'hanbok', label: '🎁 Hanbok', tooltip: 'Jacket, ribbon and full skirt',
+    settings: { hairColor: '#1a1210', shirtColor: '#e85d75', skinColor: '#ffe6d8', pantsColor: '#e85d75', shoeColor: '#ffffff', accessory: 'none', eyes: 'princess', hairStyle: 'bun', outfit: 'hanbok' } },
+  { id: 'popstar-gold', label: '🎁 Gold Finale', tooltip: 'Sequins for the last song',
+    settings: { hairColor: '#f5e6b3', shirtColor: '#ff3385', skinColor: '#ffe0cc', pantsColor: '#f4c430', shoeColor: '#f4c430', accessory: 'crown', eyes: 'princess', hairStyle: 'long', outfit: 'popstar-gold' } },
   {
     id: 'wednesday', label: '🖤 Wednesday', tooltip: 'Wednesday Addams',
     settings: {
@@ -262,7 +275,13 @@ export class AvatarEditor {
       { id: 'eleven-pink', name: '🌸 Pink Frilly' },
       { id: 'fairy-dress', name: '🌷 Fairy Petals' },
       { id: 'sally-patchwork', name: '🧵 Sally Patchwork' },
-      { id: 'jack-pinstripe', name: '💀 Jack Pinstripe' }
+      { id: 'jack-pinstripe', name: '💀 Jack Pinstripe' },
+      { id: 'kpop-stage', name: '🎁 K-pop Stage' },
+      { id: 'kpop-pastel', name: '🎁 K-pop Pastel' },
+      { id: 'kpop-dark', name: '🎁 K-pop Dark' },
+      { id: 'kpop-school', name: '🎁 School Idol' },
+      { id: 'hanbok', name: '🎁 Hanbok' },
+      { id: 'popstar-gold', name: '🎁 Gold Finale' }
     ];
 
     drawer.innerHTML = `

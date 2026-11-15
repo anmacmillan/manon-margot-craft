@@ -1,3 +1,4 @@
+import { backup } from './cloudSave.js';
 import * as THREE from 'three';
 import { WorldChunk } from './worldChunk';
 import { DataStore } from './dataStore';
@@ -118,6 +119,7 @@ export class World extends THREE.Group {
       localStorage.setItem(`minecraft_params_${playerSuffix}`, JSON.stringify(this.params));
       localStorage.setItem(`minecraft_data_${playerSuffix}`, JSON.stringify(this.dataStore.data));
       console.log(`Auto-Saved world state for: ${playerSuffix}`);
+      if (playerSuffix !== 'default') backup(playerSuffix, document.visibilityState === 'hidden');
     } catch (err) {
       console.warn('LocalStorage save failed (e.g. storage full or private browsing):', err);
     }

@@ -171,6 +171,29 @@ export class CreatureManager {
     return null;
   }
 
+  /**
+   * Gravity. The ground for an animal standing at height `cur` is the first solid block at or below its feet:
+   * it may step up one block, it is stopped by anything two blocks high, and with nothing under it, it falls.
+   * (The old rule took the highest block in the column, so a sheep under a roof, a tree or a tower was lifted on top of it,
+   * and from there walked up whatever was next: that is how they climbed into the sky.)
+   * Returns the height to stand at, or null if the way is blocked or there is no ground at all.
+   */
+  groundBelow(x, z, cur) {
+    const ix = Math.round(x), iz = Math.round(z), g = Math.round(cur), key = `${ix}|${iz}|${g}`, cached = this._groundCache.get(key);
+    if (cached !== undefined) return cached;
+    const solid = y => { const b = this.world.getBlock(ix, y, iz); return !!(b && b.id && b.id !== 9 && b.id !== 17); };      // clouds and glass do not hold an animal
+    let out = null;
+    if (solid(g)) out = solid(g + 1) ? null : g + 1;
+    else for (let y = g - 1; y >= 0; y--) if (solid(y)) { out = y + 1; break; }
+    this._groundCache.set(key, out); return out;
+  }
+  /** Where an animal may be set down to begin with: open ground, not a treetop or a roof of leaves. */
+  naturalGroundY(x, z) {
+    const SKIP = new Set([6, 7, 9, 11, 12, 13, 17]);      // trunks, leaves, cloud, cactus, glass
+    for (let y = 40; y > 0; y--) { const b = this.world.getBlock(Math.round(x), y, Math.round(z)); if (b && b.id && !SKIP.has(b.id)) return y + 1; }
+    return null;
+  }
+
   /** Invalidate cached ground heights when blocks change (called from world block events) */
   invalidateGroundCache() {
     this._groundCache.clear();
@@ -194,7 +217,7 @@ export class CreatureManager {
       for (let i = 0; i < n; i++) {
         const x = -40 + Math.random() * 80;
         const z = -40 + Math.random() * 80;
-        const y = this.groundY(x, z);
+        const y = this.naturalGroundY(x, z);
         if (y === null) continue;
         this.spawnCreature(type, builder(), new THREE.Vector3(x, y, z), { wanderRadius: 12 });
       }
@@ -207,12 +230,12 @@ export class CreatureManager {
     const villagerThemes = ['merchant', 'princess', 'fairy', 'monk'];
     const px = this.player.position.x;
     const pz = this.player.position.z;
-    const baseY = this.groundY(px, pz) ?? 32;
+    const baseY = this.naturalGroundY(px, pz) ?? 32;
     for (let i = 0; i < counts.villagers; i++) {
       const ang = (i / counts.villagers) * Math.PI * 2;
       const sx = px + Math.cos(ang) * (4 + (i % 2) * 2);
       const sz = pz + Math.sin(ang) * (4 + (i % 2) * 2);
-      const sy = this.groundY(sx, sz) ?? baseY;
+      const sy = this.naturalGroundY(sx, sz) ?? baseY;
       const theme = villagerThemes[i % villagerThemes.length];
       const v = buildVillager(theme);
       this.spawnCreature(`villager-${theme}`, v.group, new THREE.Vector3(sx, sy, sz), {
@@ -224,7 +247,7 @@ export class CreatureManager {
 
     // One follower golem (skip on iPad — heavy 9-mesh model close to camera)
     if (!isIpadLike) {
-      const gy = this.groundY(px, pz) ?? 32;
+      const gy = this.naturalGroundY(px, pz) ?? 32;
       this.spawnCreature('golem', buildIronGolem(), new THREE.Vector3(px + 3, gy, pz + 3), { follower: true });
     }
   }
@@ -247,7 +270,7 @@ export class CreatureManager {
       const ang = (i / themes.length) * Math.PI * 2;
       const sx = x + Math.cos(ang) * 3;
       const sz = z + Math.sin(ang) * 3;
-      const sy = this.groundY(sx, sz) ?? y + 1;
+      const sy = this.groundBelow(sx, sz, y + 2) ?? y + 1;
       const v = buildVillager(theme);
       this.spawnCreature('villager-' + theme, v.group, new THREE.Vector3(sx, sy, sz),
         { wanderRadius: 5, anchor: new THREE.Vector3(x, sy, z), villagerParts: v.parts });
@@ -293,8 +316,8 @@ export class CreatureManager {
           c.mesh.position.x += (dx / dist) * step;
           c.mesh.position.z += (dz / dist) * step;
           // Snap to ground
-          const gy = this.groundY(c.mesh.position.x, c.mesh.position.z);
-          if (gy !== null) c.mesh.position.y = gy; // hard-snap to ground; no levitation
+          const gy = this.groundBelow(c.mesh.position.x, c.mesh.position.z, c.mesh.position.y);
+          if (gy !== null) c.mesh.position.y = gy; // down to the ground under its feet
           c.mesh.rotation.y = Math.atan2(dx, dz);
           // Animate golem arms swinging when walking
           if (c.mesh.userData.parts) {
@@ -328,7 +351,7 @@ export class CreatureManager {
         const step = speed * stepDt;
         const nextX = c.mesh.position.x + (dx / dist) * step;
         const nextZ = c.mesh.position.z + (dz / dist) * step;
-        const gy = this.groundY(nextX, nextZ);
+        const gy = this.groundBelow(nextX, nextZ, c.mesh.position.y);
 
         // Refuse moves that would make creatures hop onto nonsense heights or float over voids.
         if (gy === null || Math.abs(gy - c.mesh.position.y) > 1.25) {
@@ -350,8 +373,8 @@ export class CreatureManager {
           if (c.villagerParts.rightArm) c.villagerParts.rightArm.rotation.x = 0.4 * Math.sin(t);
         }
       } else {
-        const gy = this.groundY(c.mesh.position.x, c.mesh.position.z);
-        if (gy !== null) c.mesh.position.y = gy;
+        const gy = this.groundBelow(c.mesh.position.x, c.mesh.position.z, c.mesh.position.y);      // standing still: it stays put, or drops if the block under it has gone
+        if (gy !== null && gy <= c.mesh.position.y) c.mesh.position.y = gy;
       }
     }
   }

@@ -11,6 +11,11 @@ import { AvatarEditor } from './avatarEditor.js';
 import { installIpadControls, isIpadLike } from './touchControls.js';
 import { CreatureManager } from './creatures.js';
 import { getAmbientAudio } from './ambientAudio.js';
+import { restore, keepBackedUp } from './cloudSave.js';
+
+// fill in or refresh each girl's saved world from its cloud copy before she picks a game
+restore(['manon', 'margot']);
+keepBackedUp(() => (window.gameStarted && !(window.network && window.network.role === 'client') ? window.playerName : ''));
 
 
 window.gameStarted = false;
